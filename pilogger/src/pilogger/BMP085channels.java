@@ -31,8 +31,7 @@ public class BMP085channels extends AbstractDataChannel{
 	public static final int CAL_MC            = 0xBC; //  # R   Calibration data (16 bits)
 	public static final int CAL_MD            = 0xBE; //  # R   Calibration data (16 bits)
 	public static final int CONTROL           = 0xF4;
-	public static final int TEMPDATA          = 0xF6;
-	public static final int PRESSUREDATA      = 0xF6;
+	public static final int DATA_REG          = 0xF6;
 	public static final byte READTEMPCMD       = 0x2E;
 	public static final int READPRESSURECMD   = 0xF4;
 	
@@ -63,10 +62,10 @@ public class BMP085channels extends AbstractDataChannel{
 	public void readCalibrationData() throws IOException {
 		cal_AC1 = readS16(CAL_AC1);
 		cal_AC2 = readS16(CAL_AC2);
-		cal_AC3 = readU16(CAL_AC3);
+		cal_AC3 = readS16(CAL_AC3);
 		cal_AC4 = readU16(CAL_AC4);
 		cal_AC5 = readU16(CAL_AC5);
-		cal_AC6 = readS16(CAL_AC6);
+		cal_AC6 = readU16(CAL_AC6);
 		cal_B1 = readS16(CAL_B1);
 		cal_B2 = readS16(CAL_B2);
 		cal_MB = readS16(CAL_MB);
@@ -80,7 +79,7 @@ public class BMP085channels extends AbstractDataChannel{
 	private int readS16(int address) throws IOException{
 		int hibyte = bmp085device.read(address);
 		if (hibyte > 127) hibyte -= 256;
-		return (hibyte<<8)+bmp085device.read(address+1) ;
+		return (hibyte*256)+bmp085device.read(address+1) ;
 	}
 	private int readU8(int address) throws IOException{
 		return bmp085device.read(address);
@@ -103,20 +102,20 @@ public class BMP085channels extends AbstractDataChannel{
 		
 		double b6 = b5 - 4000;
 		x1 = (cal_B2 * (b6 * b6 / 4096)) / 2048;
-		x2 = (cal_AC2 * b6) / 2048;
+		x2 = cal_AC2 * b6 / 2048;
 		double x3 = x1 + x2;
-		double b3 = ((cal_AC1 * 4 + x3) * ( Math.pow(2, OSS)) +2) / 4;
-		x1 = (cal_AC3 * b6) / 8192;
+		double b3 = (((cal_AC1 * 4 + x3) * Math.pow(2, OSS) )+2) / 4;
+		x1 = cal_AC3 * b6 / 8192;
 		x2 = (cal_B1 * (b6 * b6 / 4096)) / 65536;
 		x3 = ((x1 + x2) + 2) / 4;
-		double b4 = (cal_AC4 * (x3 + 32768)) / 32768;
+		double b4 = cal_AC4 * (x3 + 32768) / 32768;
 		double b7 = (rawPressure - b3) * (50000 / Math.pow(2, OSS));
 		if (b7 < 0x80000000) pressure = (b7 * 2) / b4;
 		else pressure = (b7 / b4) * 2;
 		x1 = (pressure / 256) * (pressure / 256);
 		x1 = (x1 * 3038) / 65536;
 		x2 = (-7375 * pressure) / 65536;
-	    pressure = pressure + ((x1 + x2 + 3791) / 16);
+	    pressure = pressure + (x1 + x2 + 3791) / 16;
 				
 		return new BMP085data(pressure, temperature);
 	}
@@ -139,14 +138,14 @@ public class BMP085channels extends AbstractDataChannel{
 				while (true) {
 					bmp085device.write(CONTROL, READTEMPCMD);
 					sleep(50);
-					rawTemperature = readU16(TEMPDATA);
+					rawTemperature = readU16(DATA_REG);
 					
 					bmp085device.write(CONTROL, (byte) READPRESSURECMD);
 					sleep(50);
-					msb = readU8(PRESSUREDATA);
-					lsb = readU8(PRESSUREDATA+1);
-					xlsb = readU8(PRESSUREDATA+2);
-					rawPressure = ((msb << 16) + (lsb << 8) + xlsb) >> 5;
+					msb = readU8(DATA_REG);
+					lsb = readU8(DATA_REG+1);
+					xlsb = readU8(DATA_REG+2);
+					rawPressure = ((msb << 16) + (lsb << 8) + xlsb) >> (8-OSS);
 					
 					BMP085data data = convertPressureTemp(rawPressure, rawTemperature);
 					

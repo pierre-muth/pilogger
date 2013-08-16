@@ -2,6 +2,7 @@ package pilogger;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
 
 import javax.swing.JLabel;
@@ -15,18 +16,16 @@ import cern.jdve.data.DefaultDataSource;
 import cern.jdve.graphic.RenderingHint;
 import cern.jdve.renderer.PolylineChartRenderer;
 
-public abstract class PiloggerGUI extends JTabbedPane {
+public abstract class PiloggerGUI extends JPanel {
 	private Font labelFont = new Font("Arial", Font.PLAIN, 8);
 	private Color lineChartColor = new Color(255, 255, 255, 128);
 	private Style lineStyle = new Style(lineChartColor, lineChartColor);
 	
 	public PiloggerGUI() {
 		setBackground(Color.black);
-
-		addTab("Hour", getHourPanel());
-		setTabComponentAt(0, getHourTabTitle());
-		setBackgroundAt(0, Color.black);
-		
+		setLayout(new BorderLayout());
+		add(getHourPanel(), BorderLayout.CENTER);
+		setPreferredSize(new Dimension(240, 160));
 	}
 	
 	private JPanel hourPanel;
