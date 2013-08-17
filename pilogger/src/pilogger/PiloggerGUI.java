@@ -18,7 +18,7 @@ import cern.jdve.renderer.PolylineChartRenderer;
 
 public abstract class PiloggerGUI extends JPanel {
 	private Font labelFont = new Font("Arial", Font.PLAIN, 8);
-	private Color lineChartColor = new Color(255, 255, 255, 128);
+	private Color lineChartColor = new Color(255, 255, 255, 150);
 	private Style lineStyle = new Style(lineChartColor, lineChartColor);
 	
 	public PiloggerGUI() {
