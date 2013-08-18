@@ -1,21 +1,19 @@
 package pilogger;
 
 import java.io.IOException;
-import java.util.ArrayList;
 
 import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CDevice;
 
-import datachannel.AbstractDataChannel;
+import datachannel.AbstractProbe;
 import datachannel.DataChannel;
-import datachannel.DataChannelListener;
 import datachannel.DataReceivedEvent;
 
 
-public class BMP085channels extends AbstractDataChannel{
+public class BMP085probe extends AbstractProbe{
 	public static final int BMP085_I2C_ADDR   = 0x77;
 	
-// Operating Mode
+// Operating Mode (internal oversampling)
 	public static final int OSS     = 3;
 			
 // BMP085 Registers
@@ -32,7 +30,7 @@ public class BMP085channels extends AbstractDataChannel{
 	public static final int CAL_MD            = 0xBE; //  # R   Calibration data (16 bits)
 	public static final int CONTROL           = 0xF4;
 	public static final int DATA_REG          = 0xF6;
-	public static final byte READTEMPCMD       = 0x2E;
+	public static final byte READTEMPCMD      = 0x2E;
 	public static final int READPRESSURECMD   = 0xF4;
 	
 	private I2CDevice bmp085device;
@@ -47,16 +45,25 @@ public class BMP085channels extends AbstractDataChannel{
 	private int cal_MB = 0;
 	private int cal_MC = 0;
 	private int cal_MD = 0;
-	private ArrayList<DataChannelListener> dataListenersList = new ArrayList<>();
 	
-	public DataChannel pressureChannel = new DataChannel("pressure");
-	public DataChannel temperatureChannel = new DataChannel("temperature");
+	public DataChannel pressureChannel = new DataChannel("Atmospheric Pressure");
+	public DataChannel temperatureChannel = new DataChannel("Room Temperature");
 	
-	public BMP085channels(I2CBus bus) throws IOException {
+	/**
+	 * BMP085 Pressure and Temperature probe on I2C bus
+	 * @param bus Pi4J I2CBus object
+	 * @throws IOException
+	 */
+	public BMP085probe(I2CBus bus) throws IOException {
 		bmp085device = bus.getDevice(BMP085_I2C_ADDR);
 		readCalibrationData();
 		DataReaderThread dataReaderThread = new DataReaderThread();
 		dataReaderThread.start();
+	}
+	
+	@Override
+	public DataChannel[] getChannels() {
+		return new DataChannel[]{pressureChannel, temperatureChannel};
 	}
 	
 	public void readCalibrationData() throws IOException {
@@ -154,16 +161,14 @@ public class BMP085channels extends AbstractDataChannel{
 					dataCount++;
 					
 					if (dataCount >= OVER_SAMPLING) {
-						DataReceivedEvent pressureEvent = new DataReceivedEvent(pressureSum/OVER_SAMPLING, pressureChannel);
-						DataReceivedEvent temperatureEvent = new DataReceivedEvent(temperatureSum/OVER_SAMPLING, temperatureChannel);
-						fireDataEvent(pressureEvent);
-						fireDataEvent(temperatureEvent);
+						pressureChannel.newData(pressureSum/OVER_SAMPLING);
+						temperatureChannel.newData(temperatureSum/OVER_SAMPLING);
 						temperatureSum = 0;
 						pressureSum = 0;
 						dataCount = 0;
 					}
 					
-					sleep(100);
+					sleep(100); 
 				}
 				
 			} catch (IOException | InterruptedException e) {

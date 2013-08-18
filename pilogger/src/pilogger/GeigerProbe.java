@@ -5,16 +5,21 @@ import com.pi4j.io.serial.SerialDataEvent;
 import com.pi4j.io.serial.SerialDataListener;
 import com.pi4j.io.serial.SerialPortException;
 
-import datachannel.AbstractDataChannel;
+import datachannel.AbstractProbe;
 import datachannel.DataChannel;
 import datachannel.DataReceivedEvent;
 
-public class GeigerChannel extends AbstractDataChannel implements SerialDataListener {
+public class GeigerProbe extends AbstractProbe implements SerialDataListener {
 	public static final int GEIGER_SERIAL_SPEED = 9600;
-	public DataChannel geigerChannel = new DataChannel("geiger");
+	public DataChannel geigerChannel = new DataChannel("Backgound Radiation");
 	private String inbuf = "";
 	 
-	public GeigerChannel(Serial serial) throws SerialPortException {
+	/**
+	 * Geiger Counter connected to the serial port
+	 * @param serial Serial port com Pi4J object
+	 * @throws SerialPortException
+	 */
+	public GeigerProbe(Serial serial) throws SerialPortException {
 		// open the default serial port provided on the GPIO header
 		serial.open(Serial.DEFAULT_COM_PORT, GEIGER_SERIAL_SPEED);
 		serial.addListener(this);
@@ -28,11 +33,15 @@ public class GeigerChannel extends AbstractDataChannel implements SerialDataList
     		String[] blocks = inbuf.split(", ");
     		if (blocks.length > 5) {
     			double dose = Double.valueOf(blocks[5]);
-    			DataReceivedEvent geigerEvent = new DataReceivedEvent(dose, geigerChannel);
-    			fireDataEvent(geigerEvent);
+    			geigerChannel.newData(dose);
     		}
     		inbuf = "";
     	}
+	}
+
+	@Override
+	public DataChannel[] getChannels() {
+		return new DataChannel[] {geigerChannel};
 	}
 	
 	

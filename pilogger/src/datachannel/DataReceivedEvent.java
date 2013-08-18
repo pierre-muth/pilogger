@@ -8,5 +8,8 @@ public class DataReceivedEvent {
 		this.dataValue = dataValue;
 		this.channel = channel;
 	}
+	public DataReceivedEvent(double dataValue) {
+		this.dataValue = dataValue;
+	}
 
 }
