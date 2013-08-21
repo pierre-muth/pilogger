@@ -80,35 +80,48 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 		
 	}
 	private void resetDisplayedDataset() {
-		if (gui.getDataSource0().getDataSets().length >0)
-			gui.getDataSource0().removeDataSet(0);
-		if (gui.getDataSource1().getDataSets().length >0)
-			gui.getDataSource1().removeDataSet(0);
+		if (gui.getLineDataSource0().getDataSetsCount() >0)
+			gui.getLineDataSource0().removeDataSet(0);
+		if (gui.getLineDataSource1().getDataSetsCount() >0)
+			gui.getLineDataSource1().removeDataSet(0);
+		
+		if (gui.getAreaDataSource0().getDataSetsCount() >1) {
+			gui.getAreaDataSource0().removeDataSet(1);
+			gui.getAreaDataSource0().removeDataSet(0);
+		}
+		if (gui.getAreaDataSource1().getDataSetsCount() >1) {
+			gui.getAreaDataSource1().removeDataSet(1);
+			gui.getAreaDataSource1().removeDataSet(0);
+		}
 		
 		switch (timeScaleSelected) {
 		case REALTIME:
-			gui.getDataSource0().addDataSet(0, scale0selectedChannel.getRealTimeDataSet());
-			gui.getDataSource1().addDataSet(0, scale1selectedChannel.getRealTimeDataSet());
+			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.realTimeDataSet);
+			gui.getLineDataSource1().addDataSet(0, scale1selectedChannel.realTimeDataSet);
 			break;
 			
 		case DAY:
-			gui.getDataSource0().addDataSet(0, scale0selectedChannel.getDayDataSet());			
-			gui.getDataSource1().addDataSet(0, scale1selectedChannel.getDayDataSet());			
+			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.dayDataSet);			
+			gui.getAreaDataSource0().addDataSet(0, scale0selectedChannel.dayMaxDataSet);
+			gui.getAreaDataSource0().addDataSet(1, scale0selectedChannel.dayMinDataSet);
+			gui.getLineDataSource1().addDataSet(0, scale1selectedChannel.dayDataSet);	
+			gui.getAreaDataSource1().addDataSet(0, scale1selectedChannel.dayMaxDataSet);
+			gui.getAreaDataSource1().addDataSet(1, scale1selectedChannel.dayMinDataSet);
 			break;
 			
 		case MONTH:
-			gui.getDataSource0().addDataSet(0, scale0selectedChannel.getMonthDataSet());			
-			gui.getDataSource1().addDataSet(0, scale1selectedChannel.getMonthDataSet());			
+			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.monthDataSet);			
+			gui.getLineDataSource1().addDataSet(0, scale1selectedChannel.monthDataSet);			
 			break;
 			
 		case YEAR:
-			gui.getDataSource0().addDataSet(0, scale0selectedChannel.getYearDataSet());			
-			gui.getDataSource1().addDataSet(0, scale1selectedChannel.getYearDataSet());			
+			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.yearDataSet);			
+			gui.getLineDataSource1().addDataSet(0, scale1selectedChannel.yearDataSet);			
 			break;
 
 		default:
-			gui.getDataSource0().addDataSet(0, scale0selectedChannel.getDayDataSet());			
-			gui.getDataSource1().addDataSet(0, scale1selectedChannel.getDayDataSet());
+			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.realTimeDataSet);			
+			gui.getLineDataSource1().addDataSet(0, scale1selectedChannel.realTimeDataSet);
 			break;
 		}
 		

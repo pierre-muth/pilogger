@@ -19,7 +19,9 @@ import javax.swing.border.LineBorder;
 import cern.jdve.Chart;
 import cern.jdve.Style;
 import cern.jdve.data.DefaultDataSource;
+import cern.jdve.renderer.DiffAreaChartRenderer;
 import cern.jdve.renderer.PolylineChartRenderer;
+import cern.jdve.scale.TimeStepsDefinition;
 
 public abstract class PiloggerGUI extends JPanel {
 	private Font labelFont = new Font("Arial", Font.PLAIN, 8);
@@ -59,6 +61,7 @@ public abstract class PiloggerGUI extends JPanel {
 			scale0Button.setBackground(Color.black);
 			scale0Button.setForeground(Color.gray);
 			scale0Button.setBorder(emptyBorder);
+			scale0Button.setFocusable(false);
 			scale0Button.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
@@ -77,6 +80,7 @@ public abstract class PiloggerGUI extends JPanel {
 			scale1Button.setBackground(Color.black);
 			scale1Button.setForeground(Color.gray);
 			scale1Button.setBorder(emptyBorder);
+			scale1Button.setFocusable(false);
 			scale1Button.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
@@ -94,6 +98,7 @@ public abstract class PiloggerGUI extends JPanel {
 			timeScaleButton.setBackground(Color.black);
 			timeScaleButton.setForeground(Color.gray);
 			timeScaleButton.setBorder(emptyBorder);
+			timeScaleButton.setFocusable(false);
 			timeScaleButton.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
@@ -155,8 +160,13 @@ public abstract class PiloggerGUI extends JPanel {
 	        mainChart.setAntiAliasing(false);
 	        mainChart.setAntiAliasingText(false);
 	        
-	        mainChart.addRenderer(0, getRenderer0());
-	        mainChart.addRenderer(1, getRenderer1());
+	        TimeStepsDefinition stepsDefinition = new TimeStepsDefinition();
+	        mainChart.getXScale().setStepsDefinition(stepsDefinition);
+	        
+	        mainChart.addRenderer(0, getLineRenderer0());
+	        mainChart.addRenderer(0, getAreaRenderer0());
+	        mainChart.addRenderer(1, getLineRenderer1());
+	        mainChart.addRenderer(1, getAreaRenderer1());
 	         
 //	        mainChart.addInteractor(ChartInteractor.DATA_PICKER);
 	        
@@ -164,39 +174,73 @@ public abstract class PiloggerGUI extends JPanel {
 		
 		return mainChart;
 	}
-	private PolylineChartRenderer renderer0;
-	private PolylineChartRenderer getRenderer0() {
-		if (renderer0 == null) {
-			renderer0 = new PolylineChartRenderer();
-			renderer0.setStyles(new Style[] {lineStyle, lineStyle});
-			renderer0.setDataSource(getDataSource0());
+	private PolylineChartRenderer lineRenderer0;
+	private PolylineChartRenderer getLineRenderer0() {
+		if (lineRenderer0 == null) {
+			lineRenderer0 = new PolylineChartRenderer();
+			lineRenderer0.setStyles(new Style[] {lineStyle, lineStyle});
+			lineRenderer0.setDataSource(getLineDataSource0());
 		}
-		return renderer0;
+		return lineRenderer0;
 	}
-	private DefaultDataSource dataSource0;
-	protected DefaultDataSource getDataSource0() {
-		if (dataSource0 == null) {
-			dataSource0 = new DefaultDataSource();
-		} 
-		return dataSource0;
-	}
-	private PolylineChartRenderer renderer1;
-	private PolylineChartRenderer getRenderer1() {
-		if (renderer1 == null) {
-			renderer1 = new PolylineChartRenderer();
-			renderer1.setStyles(new Style[] {lineStyle, lineStyle});
-			renderer1.setDataSource(getDataSource1());
+	private PolylineChartRenderer lineRenderer1;
+	private PolylineChartRenderer getLineRenderer1() {
+		if (lineRenderer1 == null) {
+			lineRenderer1 = new PolylineChartRenderer();
+			lineRenderer1.setStyles(new Style[] {lineStyle, lineStyle});
+			lineRenderer1.setDataSource(getLineDataSource1());
 		}
 		
-		return renderer1;
+		return lineRenderer1;
 	}
-	private DefaultDataSource dataSource1;
-	protected DefaultDataSource getDataSource1() {
-		if (dataSource1 == null) {
-			dataSource1 = new DefaultDataSource();
+	private DiffAreaChartRenderer areaRenderer0;
+	private DiffAreaChartRenderer getAreaRenderer0() {
+		if (areaRenderer0 == null) {
+			areaRenderer0 = new DiffAreaChartRenderer();
+			areaRenderer0.setStyles(new Style[] {lineStyle, lineStyle});
+			areaRenderer0.setDataSource(getAreaDataSource0());
 		}
-		return dataSource1;
+		
+		return areaRenderer0;
 	}
-	
+	private PolylineChartRenderer areaRenderer1;
+	private PolylineChartRenderer getAreaRenderer1() {
+		if (areaRenderer1 == null) {
+			areaRenderer1 = new PolylineChartRenderer();
+			areaRenderer1.setStyles(new Style[] {lineStyle, lineStyle});
+			areaRenderer1.setDataSource(getAreaDataSource1());
+		}
+		
+		return areaRenderer1;
+	}
+
+	private DefaultDataSource lineDataSource0;
+	protected DefaultDataSource getLineDataSource0() {
+		if (lineDataSource0 == null) {
+			lineDataSource0 = new DefaultDataSource();
+		} 
+		return lineDataSource0;
+	}
+	private DefaultDataSource lineDataSource1;
+	protected DefaultDataSource getLineDataSource1() {
+		if (lineDataSource1 == null) {
+			lineDataSource1 = new DefaultDataSource();
+		}
+		return lineDataSource1;
+	}
+	private DefaultDataSource areaDataSource0;
+	protected DefaultDataSource getAreaDataSource0() {
+		if (areaDataSource0 == null) {
+			areaDataSource0 = new DefaultDataSource();
+		} 
+		return areaDataSource0;
+	}
+	private DefaultDataSource areaDataSource1;
+	protected DefaultDataSource getAreaDataSource1() {
+		if (areaDataSource1 == null) {
+			areaDataSource1 = new DefaultDataSource();
+		}
+		return areaDataSource1;
+	}
 	
 }
