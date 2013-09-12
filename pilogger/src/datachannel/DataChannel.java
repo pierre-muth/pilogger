@@ -98,7 +98,9 @@ public class DataChannel {
 	}
 	
 	private void processNewData(double data) {
-		// TODO compute time and update dataset
+		// TODO compute time and update dataset real time
+		// send data point to averaging task
+		
 		double time = System.currentTimeMillis();
 		realTimeDataSet.add(time, data);
 	}
@@ -108,6 +110,8 @@ public class DataChannel {
 		private DataSet avergeDataSet;
 		private DataSet maxDataSet;
 		private DataSet minDataSet;
+		
+		//TODO don't need to pass datasets as argument.
 		
 		public AveragingTask(DataSet[] dataSets) {
 			this.avergeDataSet = dataSets[0];
