@@ -13,8 +13,10 @@ public class PiloggerLauncher {
 		JFrame f = new JFrame("Pilogger");
         f.getContentPane().add(new PiloggerImpl(simulation));
         f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        f.pack();
+        f.setExtendedState(JFrame.MAXIMIZED_BOTH); 
+        f.setUndecorated(true);
         f.setVisible(true);
+        f.pack();
 	}
 
 }

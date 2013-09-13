@@ -20,7 +20,7 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 	private HashMap<TimeScale, String> timeScaleText = new HashMap<>();
 	private DataChannel scale0selectedChannel;
 	private DataChannel scale1selectedChannel;
-	private TimeScale timeScaleSelected = TimeScale.DAY;
+	private TimeScale timeScaleSelected = TimeScale.HOUR;
 	private Font labelFont = new Font("Arial", Font.PLAIN, 8);
 	/**
 	 * Manage the probes by generating Gui according to 
@@ -82,6 +82,7 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 	private void resetDisplayedDataset() {
 		if (gui.getLineDataSource0().getDataSetsCount() >0)
 			gui.getLineDataSource0().removeDataSet(0);
+		
 		if (gui.getLineDataSource1().getDataSetsCount() >0)
 			gui.getLineDataSource1().removeDataSet(0);
 		
@@ -98,6 +99,15 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 		case REALTIME:
 			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.realTimeDataSet);
 			gui.getLineDataSource1().addDataSet(0, scale1selectedChannel.realTimeDataSet);
+			break;
+			
+		case HOUR:
+			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.hourDataSet);			
+			gui.getAreaDataSource0().addDataSet(0, scale0selectedChannel.hourMaxDataSet);
+			gui.getAreaDataSource0().addDataSet(1, scale0selectedChannel.hourMinDataSet);
+			gui.getLineDataSource1().addDataSet(0, scale1selectedChannel.hourDataSet);	
+			gui.getAreaDataSource1().addDataSet(0, scale1selectedChannel.hourMaxDataSet);
+			gui.getAreaDataSource1().addDataSet(1, scale1selectedChannel.hourMinDataSet);
 			break;
 			
 		case DAY:
@@ -131,14 +141,16 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 	}	
 	private void initTimeScaleMenu() {
 		timeScaleText.put(TimeScale.REALTIME, "Real Time");
+		timeScaleText.put(TimeScale.HOUR, "Hour");
 		timeScaleText.put(TimeScale.DAY, "Day");
 		timeScaleText.put(TimeScale.MONTH, "Month");
 		timeScaleText.put(TimeScale.YEAR, "Year");
 		gui.getScaleTimeMenu().add(getRealTimeMItem());
+		gui.getScaleTimeMenu().add(getHourTimeMItem());
 		gui.getScaleTimeMenu().add(getDayTimeMItem());
 		gui.getScaleTimeMenu().add(getMonthTimeMItem());
 		gui.getScaleTimeMenu().add(getYearTimeMItem());
-	}
+	} 
 	
 	private JMenuItem realTimeMItem;
 	private JMenuItem getRealTimeMItem() {
@@ -156,6 +168,23 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 			});
 		}
 		return realTimeMItem;
+	}
+	private JMenuItem hourTimeMItem;
+	private JMenuItem getHourTimeMItem() {
+		if (hourTimeMItem == null) {
+			hourTimeMItem = new JMenuItem(timeScaleText.get(TimeScale.HOUR));
+			hourTimeMItem.setBackground(Color.black);
+			hourTimeMItem.setForeground(Color.white);
+			hourTimeMItem.setFont(labelFont);
+			hourTimeMItem.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					timeScaleSelected = TimeScale.HOUR;
+					resetDisplayedDataset();
+				}
+			});
+		}
+		return hourTimeMItem;
 	}
 	private JMenuItem dayTimeMItem;
 	private JMenuItem getDayTimeMItem() {

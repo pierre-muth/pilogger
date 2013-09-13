@@ -1,5 +1,6 @@
 package pilogger;
 
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -8,6 +9,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.util.EmptyStackException;
 
 import javax.swing.JButton;
 import javax.swing.JMenuItem;
@@ -25,8 +27,12 @@ import cern.jdve.scale.TimeStepsDefinition;
 
 public abstract class PiloggerGUI extends JPanel {
 	private Font labelFont = new Font("Arial", Font.PLAIN, 8);
-	private Color lineChartColor = new Color(255, 255, 255, 150);
-	private Style lineStyle = new Style(lineChartColor, lineChartColor);
+	private Color line0ChartColor = new Color(255, 255, 255, 255);
+	private Color line1ChartColor = new Color(128, 128, 128, 255);
+	private Color areaChartColor = new Color(55, 55, 55, 230);
+	private Style line0Style = new Style(new BasicStroke(1.0f), line0ChartColor, line0ChartColor);
+	private Style line1Style = new Style(new BasicStroke(1.0f), line1ChartColor, line1ChartColor);
+	private Style areaStyle = new Style(new BasicStroke(0.0f), areaChartColor, areaChartColor);
 	private EmptyBorder emptyBorder = new EmptyBorder(0, 0, 0, 0);
 	private LineBorder greyBorder = new LineBorder(Color.gray, 1);
 	
@@ -146,7 +152,7 @@ public abstract class PiloggerGUI extends JPanel {
 			mainChart.getXScale().setForegroundColor(Color.gray);
 			
 			mainChart.getYScale().setLabelFont(labelFont);
-			mainChart.getYScale().setLabelForeground(Color.gray);
+			mainChart.getYScale().setLabelForeground(Color.white);
 	        mainChart.getYScale().setForegroundColor(Color.gray);
 	        mainChart.getYScale(1).setLabelFont(labelFont);
 	        mainChart.getYScale(1).setLabelForeground(Color.gray);
@@ -163,10 +169,10 @@ public abstract class PiloggerGUI extends JPanel {
 	        TimeStepsDefinition stepsDefinition = new TimeStepsDefinition();
 	        mainChart.getXScale().setStepsDefinition(stepsDefinition);
 	        
-	        mainChart.addRenderer(0, getLineRenderer0());
+	        mainChart.addRenderer(1, getAreaRenderer1());
 	        mainChart.addRenderer(0, getAreaRenderer0());
 	        mainChart.addRenderer(1, getLineRenderer1());
-	        mainChart.addRenderer(1, getAreaRenderer1());
+	        mainChart.addRenderer(0, getLineRenderer0());
 	         
 //	        mainChart.addInteractor(ChartInteractor.DATA_PICKER);
 	        
@@ -178,7 +184,7 @@ public abstract class PiloggerGUI extends JPanel {
 	private PolylineChartRenderer getLineRenderer0() {
 		if (lineRenderer0 == null) {
 			lineRenderer0 = new PolylineChartRenderer();
-			lineRenderer0.setStyles(new Style[] {lineStyle, lineStyle});
+			lineRenderer0.setStyles(new Style[] {line0Style, line0Style});
 			lineRenderer0.setDataSource(getLineDataSource0());
 		}
 		return lineRenderer0;
@@ -187,7 +193,7 @@ public abstract class PiloggerGUI extends JPanel {
 	private PolylineChartRenderer getLineRenderer1() {
 		if (lineRenderer1 == null) {
 			lineRenderer1 = new PolylineChartRenderer();
-			lineRenderer1.setStyles(new Style[] {lineStyle, lineStyle});
+			lineRenderer1.setStyles(new Style[] {line1Style, line1Style});
 			lineRenderer1.setDataSource(getLineDataSource1());
 		}
 		
@@ -197,17 +203,17 @@ public abstract class PiloggerGUI extends JPanel {
 	private DiffAreaChartRenderer getAreaRenderer0() {
 		if (areaRenderer0 == null) {
 			areaRenderer0 = new DiffAreaChartRenderer();
-			areaRenderer0.setStyles(new Style[] {lineStyle, lineStyle});
+			areaRenderer0.setStyles(new Style[] {areaStyle, areaStyle});
 			areaRenderer0.setDataSource(getAreaDataSource0());
 		}
 		
 		return areaRenderer0;
 	}
-	private PolylineChartRenderer areaRenderer1;
-	private PolylineChartRenderer getAreaRenderer1() {
+	private DiffAreaChartRenderer areaRenderer1;
+	private DiffAreaChartRenderer getAreaRenderer1() {
 		if (areaRenderer1 == null) {
-			areaRenderer1 = new PolylineChartRenderer();
-			areaRenderer1.setStyles(new Style[] {lineStyle, lineStyle});
+			areaRenderer1 = new DiffAreaChartRenderer();
+			areaRenderer1.setStyles(new Style[] {areaStyle, areaStyle});
 			areaRenderer1.setDataSource(getAreaDataSource1());
 		}
 		
