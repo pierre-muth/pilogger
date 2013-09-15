@@ -27,12 +27,21 @@ public class PiloggerImpl extends PiloggerGUI{
     		probeManager.addProbe(new BMP085probeSimulation());
     		probeManager.addProbe(new GeigerProbeSimulation());
     	} else {
-    		initCom(); 
     		initI2C();
+    		initCom(); 
     	}
     	
     }
 
+    private void initCom() {
+    	try {
+    		final Serial serial = SerialFactory.createInstance();
+    		geigerCounter = new GeigerProbe(serial);
+    		probeManager.addProbe(geigerCounter);
+    	} catch (SerialPortException e) {
+    		e.printStackTrace();
+    	}
+    }
 	private void initI2C() {
     	try {
 			final I2CBus bus = I2CFactory.getInstance(I2CBus.BUS_0);
@@ -43,13 +52,4 @@ public class PiloggerImpl extends PiloggerGUI{
 		}
     }
 	
-	private void initCom() {
-    	try {
-			final Serial serial = SerialFactory.createInstance();
-			geigerCounter = new GeigerProbe(serial);
-			probeManager.addProbe(geigerCounter);
-		} catch (SerialPortException e) {
-			e.printStackTrace();
-		}
-    }
 }

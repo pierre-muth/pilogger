@@ -20,7 +20,7 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 	private HashMap<TimeScale, String> timeScaleText = new HashMap<>();
 	private DataChannel scale0selectedChannel;
 	private DataChannel scale1selectedChannel;
-	private TimeScale timeScaleSelected = TimeScale.HOUR;
+	private TimeScale timeScaleSelected = TimeScale.DAY;
 	private Font labelFont = new Font("Arial", Font.PLAIN, 8);
 	/**
 	 * Manage the probes by generating Gui according to 
@@ -75,10 +75,8 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 
 	@Override
 	public void dataReceived(DataReceivedEvent dataReceivedEvent) {
-		
-		// TODO Save to raw .csv file
-		
 	}
+	
 	private void resetDisplayedDataset() {
 		if (gui.getLineDataSource0().getDataSetsCount() >0)
 			gui.getLineDataSource0().removeDataSet(0);
@@ -102,31 +100,39 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 			break;
 			
 		case HOUR:
-			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.hourDataSet);			
+			gui.getAreaDataSource1().addDataSet(0, scale1selectedChannel.hourMaxDataSet);
+			gui.getAreaDataSource1().addDataSet(1, scale1selectedChannel.hourMinDataSet);
 			gui.getAreaDataSource0().addDataSet(0, scale0selectedChannel.hourMaxDataSet);
 			gui.getAreaDataSource0().addDataSet(1, scale0selectedChannel.hourMinDataSet);
 			gui.getLineDataSource1().addDataSet(0, scale1selectedChannel.hourDataSet);	
-			gui.getAreaDataSource1().addDataSet(0, scale1selectedChannel.hourMaxDataSet);
-			gui.getAreaDataSource1().addDataSet(1, scale1selectedChannel.hourMinDataSet);
+			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.hourDataSet);			
 			break;
 			
 		case DAY:
-			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.dayDataSet);			
+			gui.getAreaDataSource1().addDataSet(0, scale1selectedChannel.dayMaxDataSet);
+			gui.getAreaDataSource1().addDataSet(1, scale1selectedChannel.dayMinDataSet);
 			gui.getAreaDataSource0().addDataSet(0, scale0selectedChannel.dayMaxDataSet);
 			gui.getAreaDataSource0().addDataSet(1, scale0selectedChannel.dayMinDataSet);
 			gui.getLineDataSource1().addDataSet(0, scale1selectedChannel.dayDataSet);	
-			gui.getAreaDataSource1().addDataSet(0, scale1selectedChannel.dayMaxDataSet);
-			gui.getAreaDataSource1().addDataSet(1, scale1selectedChannel.dayMinDataSet);
+			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.dayDataSet);			
 			break;
 			
 		case MONTH:
-			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.monthDataSet);			
+			gui.getAreaDataSource1().addDataSet(0, scale1selectedChannel.monthMaxDataSet);
+			gui.getAreaDataSource1().addDataSet(1, scale1selectedChannel.monthMinDataSet);
+			gui.getAreaDataSource0().addDataSet(0, scale0selectedChannel.monthMaxDataSet);
+			gui.getAreaDataSource0().addDataSet(1, scale0selectedChannel.monthMinDataSet);
 			gui.getLineDataSource1().addDataSet(0, scale1selectedChannel.monthDataSet);			
+			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.monthDataSet);			
 			break;
 			
 		case YEAR:
-			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.yearDataSet);			
+			gui.getAreaDataSource1().addDataSet(0, scale1selectedChannel.yearMaxDataSet);
+			gui.getAreaDataSource1().addDataSet(1, scale1selectedChannel.yearMinDataSet);
+			gui.getAreaDataSource0().addDataSet(0, scale0selectedChannel.yearMaxDataSet);
+			gui.getAreaDataSource0().addDataSet(1, scale0selectedChannel.yearMinDataSet);
 			gui.getLineDataSource1().addDataSet(0, scale1selectedChannel.yearDataSet);			
+			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.yearDataSet);			
 			break;
 
 		default:
