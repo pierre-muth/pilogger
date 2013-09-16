@@ -46,8 +46,8 @@ public class BMP085probe extends AbstractProbe{
 	private int cal_MC = 0;
 	private int cal_MD = 0;
 	
-	public DataChannel pressureChannel = new DataChannel("Atmospheric Pressure ");
-	public DataChannel temperatureChannel = new DataChannel("Room Temperature ");
+	public DataChannel pressureChannel = new DataChannel("Atmospheric Pressure", "Atmospheric_Pressure");
+	public DataChannel temperatureChannel = new DataChannel("Room Temperature", "Room_Temperature");
 	
 	/**
 	 * BMP085 Pressure and Temperature probe on I2C bus

@@ -24,7 +24,9 @@ public class DataChannel {
 	public static final String fileDirectory = "/home/pi/projects/pilogger/logs/";
 	
 	public String channelName;
-	public String unit = "";
+	private String unit = "";
+	
+	private String logFileName = "";
 	private ArrayList<DataChannelListener> dataListenersList = new ArrayList<>();
 
 	private static final int CHART_BUFFER_LENGTH = 300;
@@ -51,15 +53,15 @@ public class DataChannel {
 	private AveragingTask averagingTask;
 	private BufferedWriter logFileWriter;
 	
-	private double daySum = Double.NaN;
+	private double daySum = 0;
 	private double dayMin = Double.POSITIVE_INFINITY, dayMax = Double.NEGATIVE_INFINITY;
 	private int dayCount = 0;
 	
-	private double monthSum = Double.NaN;
+	private double monthSum = 0;
 	private double monthMin = Double.POSITIVE_INFINITY, monthMax = Double.NEGATIVE_INFINITY;
 	private int monthCount = 0;
 	
-	private double yearSum = Double.NaN;
+	private double yearSum = 0;
 	private double yearMin = Double.POSITIVE_INFINITY, yearMax = Double.NEGATIVE_INFINITY;
 	private int yearCount = 0;
 	
@@ -68,8 +70,9 @@ public class DataChannel {
 	 *  and fire DataReceivedEvent when newData()
 	 * @param uniqueChannelName 
 	 */
-	public DataChannel(String uniqueChannelName) {
-		channelName = uniqueChannelName;
+	public DataChannel(String uniqueChannelName, String logFileName) {
+		this.channelName = uniqueChannelName;
+		this.logFileName = logFileName;
 		realTimeDataSet = new ShiftingDataSet(channelName+"Real Time", CHART_BUFFER_LENGTH, true);
 		
 		hourDataSet = new ShiftingDataSet(channelName+"Hour", CHART_BUFFER_LENGTH, true);
@@ -90,12 +93,12 @@ public class DataChannel {
 		
 		
 		Path piloggerDir = Paths.get(fileDirectory);
-        Path logFilePath = piloggerDir.resolve(channelName+".csv");
+        Path logFilePath = piloggerDir.resolve(logFileName+".csv");
         
         try {
 			loadLogFile(logFilePath);
 		} catch (IOException e1) {
-			e1.printStackTrace();
+			System.out.println("\n No "+logFileName+".csv found in "+fileDirectory+".");
 		}
         
 		try {
@@ -117,7 +120,10 @@ public class DataChannel {
 	public void setUnit(String unit) {
 		this.unit = unit;
 	}
-	
+	public String getLogFileName() {
+		return logFileName;
+	}
+
 	public void addDataChannelListener(DataChannelListener listener) {
 		dataListenersList.add(listener);
 	}

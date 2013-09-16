@@ -11,8 +11,8 @@ import datachannel.DataReceivedEvent;
 
 
 public class BMP085probeSimulation extends AbstractProbe{
-	public DataChannel pressureChannel = new DataChannel("Atmospheric Pressure");
-	public DataChannel temperatureChannel = new DataChannel("Room Temperature");
+	public DataChannel pressureChannel = new DataChannel("Atmospheric Pressure", "Atmospheric_Pressure");
+	public DataChannel temperatureChannel = new DataChannel("Room Temperature", "Room_Temperature");
 
 	/**
 	 * BMP085 Pressure and Temperature probe on I2C bus

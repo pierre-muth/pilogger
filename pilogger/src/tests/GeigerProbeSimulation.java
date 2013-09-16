@@ -7,7 +7,7 @@ import datachannel.DataChannel;
 
 public class GeigerProbeSimulation extends AbstractProbe {
 	public static final int GEIGER_SERIAL_SPEED = 9600;
-	public DataChannel geigerChannel = new DataChannel("Backgound Radiation");
+	public DataChannel geigerChannel = new DataChannel("Backgound Radiation", "Backgound_Radiation");
 	private String inbuf = "";
 	 
 	/**
