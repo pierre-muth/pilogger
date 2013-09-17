@@ -16,6 +16,8 @@ import com.pi4j.io.serial.SerialPortException;
 public class PiloggerImpl extends PiloggerGUI{
 	private BMP085probe bmp085Probe;
     private GeigerProbe geigerCounter;
+    private SystemProbe systemProbe;
+    
     private ProbeManager probeManager = new ProbeManager(this);
 
     /**
@@ -26,14 +28,16 @@ public class PiloggerImpl extends PiloggerGUI{
     	if (simulation) {
     		probeManager.addProbe(new BMP085probeSimulation());
     		probeManager.addProbe(new GeigerProbeSimulation());
+    		probeManager.addProbe(new SystemProbe());
     	} else {
-    		initI2C();
-    		initCom(); 
+    		initI2CandBMP085probe();
+    		initComAndGeigerProbe(); 
+    		initSystemProbe();
     	}
     	
-    }
+    } 
 
-    private void initCom() {
+    private void initComAndGeigerProbe() {
     	try {
     		final Serial serial = SerialFactory.createInstance();
     		geigerCounter = new GeigerProbe(serial);
@@ -42,7 +46,7 @@ public class PiloggerImpl extends PiloggerGUI{
     		e.printStackTrace();
     	}
     }
-	private void initI2C() {
+	private void initI2CandBMP085probe() {
     	try {
 			final I2CBus bus = I2CFactory.getInstance(I2CBus.BUS_0);
 			bmp085Probe = new BMP085probe(bus);
@@ -51,5 +55,9 @@ public class PiloggerImpl extends PiloggerGUI{
 			e.printStackTrace();
 		}
     }
+	private void initSystemProbe() {
+		systemProbe = new SystemProbe();
+		probeManager.addProbe(systemProbe);
+	}
 	
 }

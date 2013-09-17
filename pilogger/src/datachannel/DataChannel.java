@@ -261,7 +261,7 @@ public class DataChannel {
 				count++;
 				if (count % 2000 == 0) System.out.print(".");
 			}
-			
+			System.out.print(" Ok");
 	}
 	
 	private class AveragingTask extends TimerTask{
