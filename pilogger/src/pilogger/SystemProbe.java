@@ -13,14 +13,11 @@ public class SystemProbe extends AbstractProbe {
 	private DataChannel memoryChannel = new DataChannel("System Memory", "System_Memory");
 	private DataChannel cpuTempChannel = new DataChannel("System temperature", "System_CPU_temp");
 	private DataChannel loadChannel = new DataChannel("System Load", "System_Load");
-	private DataChannel[] channels = new DataChannel[]{memoryChannel, cpuTempChannel, loadChannel};
+	private DataChannel[] channels = new DataChannel[]{memoryChannel, loadChannel};
 	
 	public SystemProbe() {
 		MemAndLoadReaderThread memAndLoadReaderThread = new MemAndLoadReaderThread();
-		CPUtempReaderThread cpuTempReaderThread = new CPUtempReaderThread();
-		
 		memAndLoadReaderThread.start();
-		cpuTempReaderThread.start();
 	}
 	
 	@Override
