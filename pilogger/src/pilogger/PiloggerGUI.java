@@ -5,6 +5,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
@@ -26,10 +27,10 @@ import cern.jdve.renderer.PolylineChartRenderer;
 import cern.jdve.scale.TimeStepsDefinition;
 
 public abstract class PiloggerGUI extends JPanel {
-	private Font labelFont = new Font("Arial", Font.PLAIN, 8);
+	public static Font labelFont = new Font("Dialog", Font.PLAIN, 9);
 	private Color line0ChartColor = new Color(255, 255, 255, 255);
 	private Color line1ChartColor = new Color(128, 128, 128, 255);
-	private Color areaChartColor = new Color(55, 55, 55, 230);
+	private Color areaChartColor = new Color(55, 55, 55, 100);
 	private Style line0Style = new Style(new BasicStroke(1.0f), line0ChartColor, line0ChartColor);
 	private Style line1Style = new Style(new BasicStroke(1.0f), line1ChartColor, line1ChartColor);
 	private Style areaStyle = new Style(new BasicStroke(0.0f), areaChartColor, areaChartColor);

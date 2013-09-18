@@ -21,7 +21,6 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 	private DataChannel scale0selectedChannel;
 	private DataChannel scale1selectedChannel;
 	private TimeScale timeScaleSelected = TimeScale.DAY;
-	private Font labelFont = new Font("Arial", Font.PLAIN, 8);
 	/**
 	 * Manage the probes by generating Gui according to 
 	 * the channels provided. Switch accordingly the dataset
@@ -48,8 +47,8 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 			item1.setBackground(Color.black);
 			item0.setForeground(Color.white);
 			item1.setForeground(Color.white);			
-			item0.setFont(labelFont);
-			item1.setFont(labelFont);
+			item0.setFont(PiloggerGUI.labelFont);
+			item1.setFont(PiloggerGUI.labelFont);
 			
 			// first default selection
 			if (scale0selectedChannel == null)
@@ -164,7 +163,7 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 			realTimeMItem = new JMenuItem(timeScaleText.get(TimeScale.REALTIME));
 			realTimeMItem.setBackground(Color.black);
 			realTimeMItem.setForeground(Color.white);
-			realTimeMItem.setFont(labelFont);
+			realTimeMItem.setFont(PiloggerGUI.labelFont);
 			realTimeMItem.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent e) {
@@ -181,7 +180,7 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 			hourTimeMItem = new JMenuItem(timeScaleText.get(TimeScale.HOUR));
 			hourTimeMItem.setBackground(Color.black);
 			hourTimeMItem.setForeground(Color.white);
-			hourTimeMItem.setFont(labelFont);
+			hourTimeMItem.setFont(PiloggerGUI.labelFont);
 			hourTimeMItem.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent e) {
@@ -198,7 +197,7 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 			dayTimeMItem = new JMenuItem(timeScaleText.get(TimeScale.DAY));
 			dayTimeMItem.setBackground(Color.black);
 			dayTimeMItem.setForeground(Color.white);
-			dayTimeMItem.setFont(labelFont);
+			dayTimeMItem.setFont(PiloggerGUI.labelFont);
 			dayTimeMItem.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent e) {
@@ -215,7 +214,7 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 			monthTimeMItem = new JMenuItem(timeScaleText.get(TimeScale.MONTH));
 			monthTimeMItem.setBackground(Color.black);
 			monthTimeMItem.setForeground(Color.white);
-			monthTimeMItem.setFont(labelFont);
+			monthTimeMItem.setFont(PiloggerGUI.labelFont);
 			monthTimeMItem.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent e) {
@@ -232,7 +231,7 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 			yearTimeMItem = new JMenuItem(timeScaleText.get(TimeScale.YEAR));
 			yearTimeMItem.setBackground(Color.black);
 			yearTimeMItem.setForeground(Color.white);
-			yearTimeMItem.setFont(labelFont);
+			yearTimeMItem.setFont(PiloggerGUI.labelFont);
 			yearTimeMItem.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent e) {
