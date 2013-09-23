@@ -28,8 +28,12 @@ package pilogger;
 
 import com.pi4j.io.gpio.GpioController;
 import com.pi4j.io.gpio.GpioFactory;
+import com.pi4j.io.gpio.GpioPinDigitalInput;
 import com.pi4j.io.gpio.GpioPinDigitalOutput;
+import com.pi4j.io.gpio.PinPullResistance;
 import com.pi4j.io.gpio.RaspiPin;
+import com.pi4j.io.gpio.event.GpioPinDigitalStateChangeEvent;
+import com.pi4j.io.gpio.event.GpioPinListenerDigital;
 import com.pi4j.wiringpi.Spi;
 
 public class SPITest {
@@ -37,28 +41,19 @@ public class SPITest {
 	// SPI operations
 	public static byte WRITE_CMD = 0x40;
 	public static byte READ_CMD  = 0x41;
+	
+	private static int rx_id = 0;
 
-	@SuppressWarnings("unused")
 	public static void main(String args[]) throws InterruptedException {
-
+		final byte packet[] = new byte[32];
 		final GpioController gpio = GpioFactory.getInstance();
 		final GpioPinDigitalOutput CE = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_01);
-
-		// 
-		// This SPI example is using the WiringPi native library 
-		//
-		// Please note the following command are required to enable the SPI driver on
-		// your Raspberry Pi:
-		// >  sudo modprobe spi_bcm2708
-		// >  sudo chown `id -u`.`id -g` /dev/spidev0.*
-		//
-		// see this blog post for additional details on SPI and WiringPi
-		// https://projects.drogon.net/understanding-spi-on-the-raspberry-pi/
+		final GpioPinDigitalInput IRQ = gpio.provisionDigitalInputPin(RaspiPin.GPIO_04, PinPullResistance.PULL_DOWN);
 
 		System.out.println("<--Pi4J--> SPI test program ");
 
 		// setup SPI for communication
-		int fd = Spi.wiringPiSPISetup(0, 10000000);;
+		int fd = Spi.wiringPiSPISetup(0, 10000000);
 		if (fd <= -1) {
 			System.out.println(" ==>> SPI SETUP FAILED");
 			return;
@@ -66,64 +61,104 @@ public class SPITest {
 			System.out.println(" ==>> SPI SETUP SUCCES");
 		}
 
-		byte packet[] = new byte[7];
 		
-		CE.low();
-
+		CE.low();		// disable radio
+		Thread.sleep(100);
+		
+		// write config register : all IRQ, enable 2bytes CRC, Power UP, Primary RX
 		packet[0] = 0b00100000;
 		packet[1] = 0x0F;
 		Spi.wiringPiSPIDataRW(0, packet, 2);
 		System.out.println("[RX] " + bytesToHex(packet));
 
+		// read Config Register
 		packet[0] = 0b00000000;
 		packet[1] = 0x00;
 		Spi.wiringPiSPIDataRW(0, packet, 2);
 		System.out.println("[RX] " + bytesToHex(packet));
-
-		packet[0] = 0b00110001;
-		packet[1] = 0x07;
+		
+		// write Feature reg, enable dynamic payload
+		packet[0] = 0b00111101;
+		packet[1] = 0b00000100;
 		Spi.wiringPiSPIDataRW(0, packet, 2);
 		System.out.println("[RX] " + bytesToHex(packet));
 
-		Thread.sleep(1000);
+//		// Set RX payload lenght to 6 bytes
+//		packet[0] = 0b00110001;
+//		packet[1] = 0x06;
+//		Spi.wiringPiSPIDataRW(0, packet, 2);
+//		System.out.println("[RX] " + bytesToHex(packet));
+		
+		// write DYNPL, enable dynamic payload for pipe0 & 1
+		packet[0] = 0b00111100;
+		packet[1] = 0b00000011;
+		Spi.wiringPiSPIDataRW(0, packet, 2);
+		System.out.println("[RX] " + bytesToHex(packet));
+		
+		//Flush RX FIFO
+		packet[0] = (byte) 0xE2;
+		Spi.wiringPiSPIDataRW(0, packet, 1);
+		System.out.println("[RX] " + bytesToHex(packet));
+		
+		// write Status Register : clear interupts
+		packet[0] = 0b00100111;
+		packet[1] = 0x70;
+		Spi.wiringPiSPIDataRW(0, packet, 2);
+
+		Thread.sleep(100);
 		CE.high();
+		
+		IRQ.addListener(new GpioPinListenerDigital() {
+			@Override
+			public void handleGpioPinDigitalStateChangeEvent(GpioPinDigitalStateChangeEvent event) {
+				// display pin state on console
+//				System.out.println(" --> GPIO PIN STATE CHANGE: " + event.getPin() + " = " + event.getState());
+				if (event.getState().isHigh()) return;
+				
+				// read R_RX_PL_WID Register
+				packet[0] = 0b01100000;
+				packet[1] = 0x00;
+				Spi.wiringPiSPIDataRW(0, packet, 2);
+				System.out.println("[RX] " + bytesToHex(packet));
+				
+				int payloadLenght = packet[1];
+
+				//read RX 
+				packet[0] = 0b01100001;
+				Spi.wiringPiSPIDataRW(0, packet, payloadLenght+1);
+				System.out.println("[RX] " + bytesToHex(packet));
+				System.out.println(rx_id++ +" " + new String(packet));
+
+				//clear status
+				packet[0] = 0b00100111;
+				packet[1] = 0x70;
+				Spi.wiringPiSPIDataRW(0, packet, 2);
+			}
+
+		});
+		
 		while(true) {
-			Thread.sleep(600);
-			packet[0] = 0b01100001;
-			Spi.wiringPiSPIDataRW(0, packet, 7);
-			System.out.println("[RX] " + bytesToHex(packet));
+			Thread.sleep(1000);
+//			Spi.wiringPiSPIDataRW(0, packet, 1);
+//			System.out.println("[RX] " + bytesToHex(packet));
+			
+//			if ((packet[0] & 0x0F) == 0) {
+//				packet[0] = 0b01100001;
+//				Spi.wiringPiSPIDataRW(0, packet, 7);
+//				System.out.println("[RX] " + bytesToHex(packet));
+//				System.out.println(rx_id++ +" " + new String(packet));
+//				
+//				//clear status
+//				packet[0] = 0b00100111;
+//				packet[1] = 0x70;
+//				Spi.wiringPiSPIDataRW(0, packet, 2);
+//				
+//				Spi.wiringPiSPIDataRW(0, packet, 1);
+//				System.out.println("[RX] " + bytesToHex(packet));
+//			}
 		}
 	}
 
-	public static void write(byte register, int data){
-
-		// send test ASCII message
-		byte packet[] = new byte[3];
-		packet[0] = WRITE_CMD;  // address byte
-		packet[1] = register;  // register byte
-		packet[2] = (byte)data;  // data byte
-
-		System.out.println("-----------------------------------------------");
-		System.out.println("[TX] " + bytesToHex(packet));
-		Spi.wiringPiSPIDataRW(0, packet, 3);        
-		System.out.println("[RX] " + bytesToHex(packet));
-		System.out.println("-----------------------------------------------");
-	}
-
-	public static void read(byte register){
-
-		// send test ASCII message
-		byte packet[] = new byte[3];
-		packet[0] = READ_CMD;    // address byte
-		packet[1] = register;    // register byte
-		packet[2] = 0b00000000;  // data byte
-
-		System.out.println("-----------------------------------------------");
-		System.out.println("[TX] " + bytesToHex(packet));
-		Spi.wiringPiSPIDataRW(0, packet, 3);        
-		System.out.println("[RX] " + bytesToHex(packet));
-		System.out.println("-----------------------------------------------");
-	}
 
 	public static String bytesToHex(byte[] bytes) {
 		final char[] hexArray = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
