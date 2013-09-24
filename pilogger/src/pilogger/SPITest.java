@@ -38,10 +38,6 @@ import com.pi4j.wiringpi.Spi;
 
 public class SPITest {
 
-	// SPI operations
-	public static byte WRITE_CMD = 0x40;
-	public static byte READ_CMD  = 0x41;
-	
 	private static int rx_id = 0;
 
 	public static void main(String args[]) throws InterruptedException {

@@ -11,7 +11,7 @@ import datachannel.DataChannel;
 public class SystemProbe extends AbstractProbe {
 
 	private DataChannel memoryChannel = new DataChannel("System Memory", "System_Memory");
-	private DataChannel cpuTempChannel = new DataChannel("System temperature", "System_CPU_temp");
+//	private DataChannel cpuTempChannel = new DataChannel("System temperature", "System_CPU_temp");
 	private DataChannel loadChannel = new DataChannel("System Load", "System_Load");
 	private DataChannel[] channels = new DataChannel[]{memoryChannel, loadChannel};
 	
@@ -40,18 +40,18 @@ public class SystemProbe extends AbstractProbe {
 		}
 	}
 	
-	private class CPUtempReaderThread extends Thread {
-		@Override
-		public void run() {
-			try {
-				while (true) {
-					cpuTempChannel.newData( SystemInfo.getCpuTemperature() );
-					sleep(5000);
-				}
-			} catch (InterruptedException | NumberFormatException | IOException e) {
-				e.printStackTrace();
-			} 
-		}
-	}
+//	private class CPUtempReaderThread extends Thread {
+//		@Override
+//		public void run() {
+//			try {
+//				while (true) {
+//					cpuTempChannel.newData( SystemInfo.getCpuTemperature() );
+//					sleep(5000);
+//				}
+//			} catch (InterruptedException | NumberFormatException | IOException e) {
+//				e.printStackTrace();
+//			} 
+//		}
+//	}
 
 }

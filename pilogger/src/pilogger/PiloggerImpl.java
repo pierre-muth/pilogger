@@ -7,16 +7,20 @@ import tests.GeigerProbeSimulation;
 
 import cern.jdve.data.DefaultDataSet;
 
+import com.pi4j.io.gpio.GpioController;
+import com.pi4j.io.gpio.GpioFactory;
 import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CFactory;
 import com.pi4j.io.serial.Serial;
 import com.pi4j.io.serial.SerialFactory;
 import com.pi4j.io.serial.SerialPortException;
+import com.pi4j.wiringpi.Spi;
 
 public class PiloggerImpl extends PiloggerGUI{
 	private BMP085probe bmp085Probe;
     private GeigerProbe geigerCounter;
     private SystemProbe systemProbe;
+    private WirelessProbe wirelessProbe;
     
     private ProbeManager probeManager = new ProbeManager(this);
 
@@ -33,6 +37,7 @@ public class PiloggerImpl extends PiloggerGUI{
     		initI2CandBMP085probe();
     		initComAndGeigerProbe(); 
     		initSystemProbe();
+    		initSPIandWirelessProbe();
     	}
     	
     } 
@@ -58,6 +63,22 @@ public class PiloggerImpl extends PiloggerGUI{
 	private void initSystemProbe() {
 		systemProbe = new SystemProbe();
 		probeManager.addProbe(systemProbe);
+	}
+	private void initSPIandWirelessProbe() {
+		try {
+			int fd = Spi.wiringPiSPISetup(0, 10000000);
+			if (fd <= -1) {
+				System.out.println(" ==>> SPI SETUP FAILED");
+				return;
+			} 
+			final GpioController gpio = GpioFactory.getInstance();
+			wirelessProbe = new WirelessProbe(gpio);
+			probeManager.addProbe(wirelessProbe);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		
 	}
 	
 }
