@@ -115,48 +115,44 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 	private void processPayload (byte[] redPayload) {
 //		System.out.println( Utils.bytesToHex(redPayload) );
 		if (redPayload.length < 11) return;
-
-		if (redPayload[1] == 'T') {	// Temperature info
+		
+		// Temperature info
+		if (redPayload[1] == 'T') {	
 			if (redPayload[2] == '2') {
 				byte TLV = redPayload[3];
 				byte THV = redPayload[4];
 
-				THV = (byte) (THV & 0b10000111);
-				int temperature = THV*255;
+				// TODO handle negative values !
 				int i;
-				if (TLV < 0)
-					i = 256 + TLV ;
-				else
-					i = TLV;
+				if (TLV < 0) i = 256 + TLV ;
+				else i = TLV;
 				
+				double temperature = THV*255;
 				temperature += i;
-				outTemperatureChannel.newData(temperature * 0.0625);
+				temperature *= 0.0625;
+				if (temperature < 80)
+					outTemperatureChannel.newData(temperature);
 
 			}
 		}
-
-		if (redPayload[5] == 'L') {	// Light value
+		// Light value
+		if (redPayload[5] == 'L') {	
 			if (redPayload[6] == '1') {
 				int i;
-				if (redPayload[7] < 0)
-					i = 256 + redPayload[7] ;
-				else
-					i = redPayload[7];
+				if (redPayload[7] < 0) i = 256 + redPayload[7] ;
+				else i = redPayload[7];
 				outLightChannel.newData(i);
 			}
 		}
-		
-		if (redPayload[8] == 'B') {	//Battery value
+		//Battery value
+		if (redPayload[8] == 'B') {	
 			if (redPayload[9] == '1') {
 				int i;
-				if (redPayload[10] < 0)
-					i = 256 + redPayload[10] ;
-				else
-					i = redPayload[10];
+				if (redPayload[10] < 0)	i = 256 + redPayload[10] ;
+				else i = redPayload[10];
 				outBatteryChannel.newData(i);
 			}
 		}
 
-		//		System.out.println( Utils.bytesToHex(readPayload) );
 	}
 }
