@@ -113,8 +113,8 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 	}
 
 	private void processPayload (byte[] redPayload) {
-		System.out.println( Utils.bytesToHex(redPayload) );
-		if (redPayload.length < 10) return;
+//		System.out.println( Utils.bytesToHex(redPayload) );
+		if (redPayload.length < 11) return;
 
 		if (redPayload[1] == 'T') {	// Temperature info
 			if (redPayload[2] == '2') {
@@ -125,7 +125,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 				int temperature = THV*255;
 				int i;
 				if (TLV < 0)
-					i = 255 + TLV ;
+					i = 256 + TLV ;
 				else
 					i = TLV;
 				
@@ -137,13 +137,23 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 
 		if (redPayload[5] == 'L') {	// Light value
 			if (redPayload[6] == '1') {
-				outLightChannel.newData(redPayload[7]);
+				int i;
+				if (redPayload[7] < 0)
+					i = 256 + redPayload[7] ;
+				else
+					i = redPayload[7];
+				outLightChannel.newData(i);
 			}
 		}
 		
 		if (redPayload[8] == 'B') {	//Battery value
 			if (redPayload[9] == '1') {
-				outBatteryChannel.newData(redPayload[10]);
+				int i;
+				if (redPayload[10] < 0)
+					i = 256 + redPayload[10] ;
+				else
+					i = redPayload[10];
+				outBatteryChannel.newData(i);
 			}
 		}
 
