@@ -21,7 +21,9 @@ import cern.jdve.data.ShiftingDataSet;
  * @author pfreyerm
  */
 public class DataChannel {
-	public static final String fileDirectory = "/home/pi/projects/pilogger/logs/";
+	public static final String logFileDirectory = "/home/pi/projects/pilogger/logs/";
+	public static final String onlineFileDirectory = "/home/pi/projects/pilogger/logs/online/";
+	
 	
 	public String channelName;
 	private String unit = "";
@@ -92,13 +94,13 @@ public class DataChannel {
 		yearMinDataSet = new ShiftingDataSet(channelName+"Year min", CHART_BUFFER_LENGTH, true);
 		
 		
-		Path piloggerDir = Paths.get(fileDirectory);
+		Path piloggerDir = Paths.get(logFileDirectory);
         Path logFilePath = piloggerDir.resolve(logFileName+".csv");
         
         try {
 			loadLogFile(logFilePath);
 		} catch (IOException e1) {
-			System.out.println("\n No "+logFileName+".csv found in "+fileDirectory+".");
+			System.out.println("\n No "+logFileName+".csv found in "+logFileDirectory+".");
 		}
         
 		try {

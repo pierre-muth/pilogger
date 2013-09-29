@@ -1,4 +1,4 @@
-package pilogger;
+package tests;
 // START SNIPPET: system-info-snippet
 
 

@@ -18,5 +18,6 @@
 	<classpathentry kind="lib" path="lib/pi4j-service-sources.jar"/>
 	<classpathentry kind="lib" path="lib/pi4j-service.jar"/>
 	<classpathentry kind="lib" path="lib/jdataviewer.jar"/>
+	<classpathentry kind="lib" path="lib/commons-net-3.3.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
