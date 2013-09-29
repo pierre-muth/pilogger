@@ -1,5 +1,7 @@
 package pilogger;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -122,9 +124,13 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 				byte TLV = redPayload[3];
 				byte THV = redPayload[4];
 				
-				short sTemp = (short) ((THV << 8) + TLV);
-				double temperature = sTemp * 0.0625;
+				ByteBuffer bb = ByteBuffer.allocate(2);
+				bb.order(ByteOrder.LITTLE_ENDIAN);
+				bb.put(TLV);
+				bb.put(THV);
+				short shortVal = bb.getShort(0);
 
+				double temperature = shortVal * 0.0625;
 				if (temperature < 80)
 					outTemperatureChannel.newData(temperature);
 

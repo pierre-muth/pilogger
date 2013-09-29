@@ -255,8 +255,8 @@ public class DataChannel {
 				elements = line.split(", ");
 				if (elements.length > 0) time = Double.parseDouble(elements[0]);
 				if (elements.length > 1) value = Double.parseDouble(elements[1]);
-				if (elements.length > 2) min = Double.parseDouble(elements[2]);
-				if (elements.length > 3) max = Double.parseDouble(elements[3]);
+				if (elements.length > 2) max = Double.parseDouble(elements[2]);
+				if (elements.length > 3) min = Double.parseDouble(elements[3]);
 			
 				AveragedDataPoint averagedDataPoint = new AveragedDataPoint(time, value, min, max);
 				processAveragedData(averagedDataPoint);
