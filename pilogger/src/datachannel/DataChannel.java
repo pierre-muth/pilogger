@@ -11,9 +11,14 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.sql.Time;
+import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import pilogger.UploadFTP;
 
 import cern.jdve.data.ShiftingDataSet;
 
@@ -22,8 +27,9 @@ import cern.jdve.data.ShiftingDataSet;
  */
 public class DataChannel {
 	public static final String logFileDirectory = "/home/pi/projects/pilogger/logs/";
-	public static final String onlineFileDirectory = "/home/pi/projects/pilogger/logs/online/";
+	public static final String onlineFileLocalDirectory = "/home/pi/projects/pilogger/logs/online/";
 	
+	private Path piloggerOnlineDir;
 	
 	public String channelName;
 	private String unit = "";
@@ -54,6 +60,7 @@ public class DataChannel {
 	
 	private AveragingTask averagingTask;
 	private BufferedWriter logFileWriter;
+	private BufferedWriter onlineFileWriter;
 	
 	private double daySum = 0;
 	private double dayMin = Double.POSITIVE_INFINITY, dayMax = Double.NEGATIVE_INFINITY;
@@ -100,7 +107,7 @@ public class DataChannel {
         try {
 			loadLogFile(logFilePath);
 		} catch (IOException e1) {
-			System.out.println("\n No "+logFileName+".csv found in "+logFileDirectory+".");
+			System.out.println("\n No "+logFileName+".csv found in "+logFileDirectory+", creating file...");
 		}
         
 		try {
@@ -109,6 +116,8 @@ public class DataChannel {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+
+		piloggerOnlineDir = Paths.get(onlineFileLocalDirectory);
 		
 		Timer t = new Timer();
 		averagingTask = new AveragingTask();
@@ -155,17 +164,16 @@ public class DataChannel {
 		averagingTask.addPoint(data);
 	}
 	
-	private void processAveragedData(AveragedDataPoint averagedDataPoint) {
+	private void processAveragedData(AveragedDataPoint averagedDataPoint, boolean fromFile) {
 		hourDataSet.add(averagedDataPoint.time, averagedDataPoint.value);
 		hourMaxDataSet.add(averagedDataPoint.time, averagedDataPoint.max);
 		hourMinDataSet.add(averagedDataPoint.time, averagedDataPoint.min);
 		
-		processNewHourDataForDayDataSets(averagedDataPoint);
-		
-		logAveragedDataToFile(averagedDataPoint);
+		processNewHourDataForDayDataSets(averagedDataPoint, fromFile);
+		if(!fromFile) logAveragedDataToFile(averagedDataPoint);
 	}
 	
-	private void processNewHourDataForDayDataSets(AveragedDataPoint averagedDataPoint) {
+	private void processNewHourDataForDayDataSets(AveragedDataPoint averagedDataPoint, boolean fromFile) {
 		daySum += averagedDataPoint.value;
 		if (averagedDataPoint.value < dayMin) dayMin = averagedDataPoint.value;
 		if (averagedDataPoint.value > dayMax) dayMax = averagedDataPoint.value;
@@ -176,7 +184,8 @@ public class DataChannel {
 			dayMaxDataSet.add(averagedDataPoint.time, dayMax);
 			
 			averagedDataPoint = new AveragedDataPoint(averagedDataPoint.time, daySum/dayCount, dayMin, dayMax);
-			processNewDayData(averagedDataPoint);
+			processNewDayData(averagedDataPoint, fromFile);
+			if (!fromFile) putOnlineDayData();
 			
 			daySum = 0;
 			dayMin = Double.POSITIVE_INFINITY;
@@ -186,7 +195,7 @@ public class DataChannel {
 		}
 	}
 	
-	private void processNewDayData(AveragedDataPoint averagedDataPoint) {
+	private void processNewDayData(AveragedDataPoint averagedDataPoint, boolean fromFile) {
 		monthSum += averagedDataPoint.value;
 		if (averagedDataPoint.value < monthMin) monthMin = averagedDataPoint.value;
 		if (averagedDataPoint.value > monthMax) monthMax = averagedDataPoint.value;
@@ -198,6 +207,7 @@ public class DataChannel {
 			
 			averagedDataPoint = new AveragedDataPoint(averagedDataPoint.time, monthSum/monthCount, monthMin, monthMax);
 			processNewMonthData(averagedDataPoint);
+			if (!fromFile) putOnlineMonthData();
 			
 			monthSum = 0;
 			monthMin = Double.POSITIVE_INFINITY;
@@ -259,11 +269,80 @@ public class DataChannel {
 				if (elements.length > 3) min = Double.parseDouble(elements[3]);
 			
 				AveragedDataPoint averagedDataPoint = new AveragedDataPoint(time, value, min, max);
-				processAveragedData(averagedDataPoint);
+				processAveragedData(averagedDataPoint, true);
 				count++;
 				if (count % 2000 == 0) System.out.print(".");
 			}
-			System.out.print(" Ok");
+			System.out.print(" Ok  ");
+	}
+	
+	private void putOnlineDayData() {
+		Path onlineDayFilePath = piloggerOnlineDir.resolve(logFileName+"Day.csv");
+		
+		try {
+			onlineFileWriter = Files.newBufferedWriter(onlineDayFilePath, Charset.defaultCharset(), new OpenOption[] {
+				StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE});
+			
+			onlineFileWriter.write("Time, "+channelName+", Min, Max\n");
+		
+			for (int i = 0; i < dayDataSet.getDataCount(); i++) {
+
+				onlineFileWriter.write(
+						Double.toString(dayDataSet.getX(i))
+						+", "
+						+Double.toString(dayDataSet.getY(i))
+						+", "
+						+Double.toString(dayMinDataSet.getY(i))
+						+", "
+						+Double.toString(dayMaxDataSet.getY(i))
+						+"\n");
+			}
+			
+			onlineFileWriter.flush();
+			onlineFileWriter.close();
+			
+			UploadFTP.store(onlineDayFilePath);
+			
+		} catch (Exception e) {
+			System.out.println(new Date().toString()+" Fail to upload online Day data for "+channelName);
+		} 
+		
+	}
+	
+	private void putOnlineMonthData() {
+		Path onlineMonthFilePath = piloggerOnlineDir.resolve(logFileName+"Month.csv");
+		try {
+			onlineFileWriter = Files.newBufferedWriter(onlineMonthFilePath, Charset.defaultCharset(), new OpenOption[] {
+				StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE});
+			
+			onlineFileWriter.write("Time, "+channelName+", Min, Max\n");
+		
+			for (int i = 0; i < monthDataSet.getDataCount(); i++) {
+
+				onlineFileWriter.write(
+						Double.toString(monthDataSet.getX(i))
+						+", "
+						+Double.toString(monthDataSet.getY(i))
+						+", "
+						+Double.toString(monthMinDataSet.getY(i))
+						+", "
+						+Double.toString(monthMaxDataSet.getY(i))
+						+"\n");
+			}
+			
+			onlineFileWriter.flush();
+			onlineFileWriter.close();
+			
+			UploadFTP.store(onlineMonthFilePath);
+			
+		} catch (Exception e) {
+			System.out.println(new Date().toString()+" Fail to upload online Month data for "+channelName);
+		} 
+	}
+	
+	private void putOnlineYearData() {
+		Path onlineYearFilePath = piloggerOnlineDir.resolve(logFileName+"Year.csv");
+		
 	}
 	
 	private class AveragingTask extends TimerTask{
@@ -280,7 +359,7 @@ public class DataChannel {
 				double time = System.currentTimeMillis();
 				double av = sum/count;
 				AveragedDataPoint averagedDataPoint = new AveragedDataPoint(time, av, min, max);
-				DataChannel.this.processAveragedData(averagedDataPoint);
+				DataChannel.this.processAveragedData(averagedDataPoint, false);
 			}
 			
 			initVariables();

@@ -20,7 +20,7 @@ import datachannel.DataChannel;
 public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigital{
 
 	public DataChannel outTemperatureChannel = new DataChannel("Outside Temperature", "Outside_Temperature");
-	public DataChannel outLightChannel = new DataChannel("Outside Light", "Outside_Light");
+	public DataChannel outLightChannel = new DataChannel("Outside Brightness", "Outside_Light");
 	public DataChannel outBatteryChannel = new DataChannel("Outside Battery", "Outside_Battery");
 	private DataChannel[] channels = new DataChannel[] {outTemperatureChannel, outLightChannel, outBatteryChannel};
 
