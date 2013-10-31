@@ -1,12 +1,8 @@
 #summary Web page using Google Chart.
 
-= Introduction =
-
-Add your content here.
-
+There the code of an html page to show charts of csv file :
 
 {{{
-
 
 <html>
   <head>
