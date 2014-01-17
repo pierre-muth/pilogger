@@ -2,15 +2,12 @@ package pilogger;
 
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
-import java.util.EmptyStackException;
 
 import javax.swing.JButton;
 import javax.swing.JMenuItem;
@@ -36,6 +33,8 @@ public abstract class PiloggerGUI extends JPanel {
 	private Style areaStyle = new Style(new BasicStroke(0.0f), areaChartColor, areaChartColor);
 	private EmptyBorder emptyBorder = new EmptyBorder(0, 0, 0, 0);
 	private LineBorder greyBorder = new LineBorder(Color.gray, 1);
+	private static final String CARD_CHART = "Chart";
+	private static final String CARD_CONF = "Config";
 	
 	/**
 	 * Pilogger application GUI. 
@@ -43,10 +42,54 @@ public abstract class PiloggerGUI extends JPanel {
 	
 	public PiloggerGUI() {
 		setBackground(Color.black);
-		setLayout(new BorderLayout());
-		add(getMainChart(), BorderLayout.CENTER);
-		add(getNorthConfigPanel(), BorderLayout.NORTH);
+		setBorder(emptyBorder);
+		setLayout(getCardLayout());
+		add(getChartCard(), CARD_CHART);
+		add(getConfCard(), CARD_CONF);
 		setPreferredSize(new Dimension(240, 160));
+	}
+	
+	private CardLayout cardLayout;
+	private CardLayout getCardLayout() {
+		if (cardLayout == null) {
+			cardLayout = new CardLayout();
+		}
+		return cardLayout;
+	}
+	
+	private JPanel chartCard;
+	private JPanel getChartCard() {
+		if (chartCard == null) {
+			chartCard = new JPanel();
+			chartCard.setBackground(Color.black);
+			chartCard.setLayout(new BorderLayout());
+			chartCard.add(getMainChart(), BorderLayout.CENTER);
+			chartCard.add(getNorthConfigPanel(), BorderLayout.NORTH);
+		}
+		return chartCard;
+	}
+	
+	private JPanel confCard;
+	protected JPanel getConfCard() {
+		if (confCard == null) {
+			confCard = new JPanel();
+			confCard.setBackground(Color.gray);
+			confCard.add(getConfBackButton());
+		}
+		return confCard;
+	}
+	private JButton confBackButton;
+	private JButton getConfBackButton() {
+		if (confBackButton == null) {
+			confBackButton = new JButton("Back");
+			confBackButton.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					getCardLayout().show(PiloggerGUI.this, CARD_CHART);
+				}
+			});
+		}
+		return confBackButton;
 	}
 	
 	private JPanel northConfigPanel;
@@ -139,9 +182,28 @@ public abstract class PiloggerGUI extends JPanel {
 			scaleTimeMenu = new JPopupMenu();
 			scaleTimeMenu.setBackground(Color.black);
 			scaleTimeMenu.setBorder(greyBorder);
+			scaleTimeMenu.add(getConfigItem());
 		}
 		return scaleTimeMenu;
 	}
+	
+	private JMenuItem configItem;
+	private JMenuItem getConfigItem() {
+		if (configItem == null) {
+			configItem = new JMenuItem(CARD_CONF);
+			configItem.setBackground(Color.black);
+			configItem.setForeground(Color.white);
+			configItem.setFont(PiloggerGUI.labelFont);
+			configItem.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					getCardLayout().show(PiloggerGUI.this, CARD_CONF);
+				}
+			});
+		}
+		return configItem;
+	}
+	
 	private Chart mainChart;
 	private Chart getMainChart() {
 		if (mainChart == null) {

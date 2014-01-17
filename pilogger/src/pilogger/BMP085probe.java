@@ -2,6 +2,8 @@ package pilogger;
 
 import java.io.IOException;
 
+import javax.swing.JComponent;
+
 import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CDevice;
 
@@ -185,6 +187,12 @@ public class BMP085probe extends AbstractProbe{
 			this.pressure = pressure;
 			this.temperature = temperature;
 		}
+	}
+
+	@Override
+	public JComponent[] getGuiComponents() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

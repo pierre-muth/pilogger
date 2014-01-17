@@ -1,9 +1,14 @@
 package pilogger;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import javax.swing.JButton;
+import javax.swing.JComponent;
 
 import com.pi4j.io.gpio.GpioController;
 import com.pi4j.io.gpio.GpioPinDigitalInput;
@@ -22,7 +27,20 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 	public DataChannel outTemperatureChannel = new DataChannel("Outside Temperature", "Outside_Temperature");
 	public DataChannel outLightChannel = new DataChannel("Outside Brightness", "Outside_Light");
 	public DataChannel outBatteryChannel = new DataChannel("Outside Battery", "Outside_Battery");
-	private DataChannel[] channels = new DataChannel[] {outTemperatureChannel, outLightChannel, outBatteryChannel};
+	public DataChannel heatingExhaustChannel = new DataChannel("Heating Exhaust", "Heating_Exhaust");
+	public DataChannel heatingInflowChannel = new DataChannel("Heating Inflow", "Heating_Inflow");
+	public DataChannel heatingReturnChannel = new DataChannel("Heating Return", "Heating_Return");
+	public DataChannel cellarTemperatureChannel = new DataChannel("Cellar Temperature", "Cellar_temperature");
+	public DataChannel seismoChannel = new DataChannel("Seismometer", "Seismometer");
+	private DataChannel[] channels = new DataChannel[] {
+			outTemperatureChannel, 
+			outLightChannel, 
+			outBatteryChannel, 
+			heatingExhaustChannel, 
+			heatingInflowChannel, 
+			heatingReturnChannel, 
+			cellarTemperatureChannel,
+			seismoChannel};
 
 	private GpioController gpio;
 	private GpioPinDigitalOutput CE;
@@ -65,10 +83,20 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 		packet[0] = 0b00111101;
 		packet[1] = 0b00000100;
 		Spi.wiringPiSPIDataRW(0, packet, 2);
+		
+		// write RF setup : 250Kbps
+		packet[0] = 0b00100110;
+		packet[1] = 0b00100110;
+		Spi.wiringPiSPIDataRW(0, packet, 2);
+		
+		// write EN_RXADDR : enable RX address pipe 0 & 1 & 2 
+		packet[0] = 0b00100010;
+		packet[1] = 0b00000111;
+		Spi.wiringPiSPIDataRW(0, packet, 2);
 
-		// write DYNPL, enable dynamic payload for pipe0 & 1
+		// write DYNPL, enable dynamic payload for pipe0 & 1 & 2
 		packet[0] = 0b00111100;
-		packet[1] = 0b00000011;
+		packet[1] = 0b00000111;
 		Spi.wiringPiSPIDataRW(0, packet, 2);
 
 		//Flush RX FIFO
@@ -114,8 +142,127 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 		processPayload(readPayload);
 	}
 
-	private synchronized void processPayload (byte[] redPayload) {
+	private void processPayload (byte[] redPayload) {
 //		System.out.println( Utils.bytesToHex(redPayload) );
+				
+		if (redPayload[0] == 0x40) { 		// pipe 0 : solar probe
+			processSolarProbe(redPayload);
+		} else if (redPayload[0] == 0x42) { // pipe 1 : cellar
+			processCellarTemp(redPayload);
+		} else if (redPayload[0] == 0x44) { // pipe 2 : seismo
+			processSeismo(redPayload);
+		}
+
+	}
+	
+	private void processSeismo(byte[] redPayload) {
+		if (redPayload[1] == 'P') {	// Heating Exhaust
+			if (redPayload[2] == '2') {
+				byte HV = redPayload[3];
+				byte LV = redPayload[4];
+				ByteBuffer bb = ByteBuffer.allocate(2);
+				bb.order(ByteOrder.LITTLE_ENDIAN);
+				bb.put(LV);
+				bb.put(HV);
+				short shortVal = bb.getShort(0);
+				seismoChannel.newData(shortVal);
+
+			}
+		}
+	}
+	
+	private void processCellarTemp(byte[] redPayload) {
+		byte reject = (byte) 0xFF;
+		if (redPayload[1] == 'T' && redPayload[2] == 'A') {	// Heating Exhaust
+			if (redPayload[3] == '2') {
+				byte TLV = redPayload[4];
+				byte THV = redPayload[5];
+				if (TLV != reject && THV != reject) {
+					ByteBuffer bb = ByteBuffer.allocate(2);
+					bb.order(ByteOrder.LITTLE_ENDIAN);
+					bb.put(TLV);
+					bb.put(THV);
+					short shortVal = bb.getShort(0);
+
+					double temperature = shortVal * 0.0625;
+					if (temperature < 80 && temperature > -40)
+						heatingExhaustChannel.newData(temperature);
+				}
+			}
+		}
+		if (redPayload[6] == 'T' && redPayload[7] == 'B') {	// Heating Return
+			if (redPayload[8] == '2') {
+				byte TLV = redPayload[9];
+				byte THV = redPayload[10];
+				if (TLV != reject && THV != reject) {
+					ByteBuffer bb = ByteBuffer.allocate(2);
+					bb.order(ByteOrder.LITTLE_ENDIAN);
+					bb.put(TLV);
+					bb.put(THV);
+					short shortVal = bb.getShort(0);
+
+					double temperature = shortVal * 0.0625;
+					if (temperature < 80 && temperature > -40)
+						heatingReturnChannel.newData(temperature);
+				}
+			}
+		}
+		if (redPayload[11] == 'T' && redPayload[12] == 'C') { //Heating Inflow
+			if (redPayload[13] == '2') {
+				byte TLV = redPayload[14];
+				byte THV = redPayload[15];
+				if (TLV != reject && THV != reject) {
+					ByteBuffer bb = ByteBuffer.allocate(2);
+					bb.order(ByteOrder.LITTLE_ENDIAN);
+					bb.put(TLV);
+					bb.put(THV);
+					short shortVal = bb.getShort(0);
+
+					double temperature = shortVal * 0.0625;
+					if (temperature < 80 && temperature > -40)
+						heatingInflowChannel.newData(temperature);
+				}
+
+			}
+		}
+		if (redPayload[16] == 'T' && redPayload[17] == 'D') { // Ambiant temperature
+			if (redPayload[18] == '2') {
+				byte TLV = redPayload[19];
+				byte THV = redPayload[20];
+				if (TLV != reject && THV != reject) {
+					ByteBuffer bb = ByteBuffer.allocate(2);
+					bb.order(ByteOrder.LITTLE_ENDIAN);
+					bb.put(TLV);
+					bb.put(THV);
+					short shortVal = bb.getShort(0);
+
+					double temperature = shortVal * 0.0625;
+					if (temperature < 80 && temperature > -40)
+						cellarTemperatureChannel.newData(temperature);
+				}
+
+			}
+		}
+		
+	}
+	
+	private void processSeismoProbe(byte[] redPayload) {
+		
+		if (redPayload[1] == 'P') {	
+			if (redPayload[2] == '2') {
+				byte pHigh = redPayload[3];
+				byte pLow = redPayload[4];
+				int i;
+				if (pLow < 0) i = 256 + pLow ;
+				else i = pLow;
+				i+= pHigh*256;
+				
+//				testChannel.newData(i);
+			}
+		}
+	}
+	
+	private void processSolarProbe(byte[] redPayload) {
 		if (redPayload.length < 11) return;
 		
 		// Temperature info
@@ -123,7 +270,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 			if (redPayload[2] == '2') {
 				byte TLV = redPayload[3];
 				byte THV = redPayload[4];
-				
+
 				ByteBuffer bb = ByteBuffer.allocate(2);
 				bb.order(ByteOrder.LITTLE_ENDIAN);
 				bb.put(TLV);
@@ -154,6 +301,25 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 				outBatteryChannel.newData(i);
 			}
 		}
+	}
 
+	@Override
+	public JComponent[] getGuiComponents() {
+		return new JComponent[] {getResetButton()};
+	}
+	
+	private JButton resetButton;
+	private JButton getResetButton() {
+		if (resetButton == null) {
+			resetButton = new JButton("Reset nRF24L01+");
+			resetButton.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					initNRF24L01();
+				}
+			});
+		}
+		
+		return resetButton;
 	}
 }

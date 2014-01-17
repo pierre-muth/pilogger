@@ -58,6 +58,12 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 				resetDisplayedDataset();
 			}
 		}
+		
+		if (probe.getGuiComponents() != null && probe.getGuiComponents().length > 0) {
+			for (int i = 0; i < probe.getGuiComponents().length; i++) {
+				gui.getConfCard().add(probe.getGuiComponents()[i]);
+			}
+		}
 	}
 	
 	@Override

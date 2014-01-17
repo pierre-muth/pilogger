@@ -1,5 +1,7 @@
 package pilogger;
 
+import javax.swing.JComponent;
+
 import com.pi4j.io.serial.Serial;
 import com.pi4j.io.serial.SerialDataEvent;
 import com.pi4j.io.serial.SerialDataListener;
@@ -42,6 +44,12 @@ public class GeigerProbe extends AbstractProbe implements SerialDataListener {
 	@Override
 	public DataChannel[] getChannels() {
 		return new DataChannel[] {geigerChannel};
+	}
+
+	@Override
+	public JComponent[] getGuiComponents() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 	
 	
