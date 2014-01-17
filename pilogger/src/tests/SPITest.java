@@ -41,7 +41,7 @@ public class SPITest {
 	private static int rx_id = 0;
 
 	public static void main(String args[]) throws InterruptedException {
-		final byte packet[] = new byte[32];
+		final byte packet[] = new byte[24];
 		final GpioController gpio = GpioFactory.getInstance();
 		final GpioPinDigitalOutput CE = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_01);
 		final GpioPinDigitalInput IRQ = gpio.provisionDigitalInputPin(RaspiPin.GPIO_04, PinPullResistance.PULL_DOWN);
@@ -78,16 +78,22 @@ public class SPITest {
 		packet[1] = 0b00000100;
 		Spi.wiringPiSPIDataRW(0, packet, 2);
 		System.out.println("[RX] " + bytesToHex(packet));
-
-//		// Set RX payload lenght to 6 bytes
-//		packet[0] = 0b00110001;
-//		packet[1] = 0x06;
-//		Spi.wiringPiSPIDataRW(0, packet, 2);
-//		System.out.println("[RX] " + bytesToHex(packet));
 		
-		// write DYNPL, enable dynamic payload for pipe0 & 1
+		// write RF setup : 250Kbps
+		packet[0] = 0b00100110;
+		packet[1] = 0b00100110;
+		Spi.wiringPiSPIDataRW(0, packet, 2);
+		System.out.println("[RX] " + bytesToHex(packet));
+		
+		// write EN_RXADDR : enable RX address pipe 0 & 1 & 2 
+		packet[0] = 0b00100010;
+		packet[1] = 0b00000111;
+		Spi.wiringPiSPIDataRW(0, packet, 2);
+		System.out.println("[RX] " + bytesToHex(packet));
+
+		// write DYNPL, enable dynamic payload for pipe0 & 1 & 2
 		packet[0] = 0b00111100;
-		packet[1] = 0b00000011;
+		packet[1] = 0b00000111;
 		Spi.wiringPiSPIDataRW(0, packet, 2);
 		System.out.println("[RX] " + bytesToHex(packet));
 		
@@ -107,9 +113,11 @@ public class SPITest {
 		IRQ.addListener(new GpioPinListenerDigital() {
 			@Override
 			public void handleGpioPinDigitalStateChangeEvent(GpioPinDigitalStateChangeEvent event) {
-				// display pin state on console
-//				System.out.println(" --> GPIO PIN STATE CHANGE: " + event.getPin() + " = " + event.getState());
+
 				if (event.getState().isHigh()) return;
+				
+				System.out.println(rx_id++);
+				clearArray(packet);
 				
 				// read R_RX_PL_WID Register
 				packet[0] = 0b01100000;
@@ -117,13 +125,11 @@ public class SPITest {
 				Spi.wiringPiSPIDataRW(0, packet, 2);
 				System.out.println("[RX] " + bytesToHex(packet));
 				
-				int payloadLenght = packet[1];
-
 				//read RX 
+				int payloadLenght = packet[1];
 				packet[0] = 0b01100001;
 				Spi.wiringPiSPIDataRW(0, packet, payloadLenght+1);
 				System.out.println("[RX] " + bytesToHex(packet));
-				System.out.println(rx_id++ +" " + new String(packet));
 
 				//clear status
 				packet[0] = 0b00100111;
@@ -155,7 +161,12 @@ public class SPITest {
 		}
 	}
 
-
+	private static void clearArray(byte[] bytes) {
+		for ( int j = 0; j < bytes.length; j++ ) {
+			bytes[j] = 0;
+		}
+	}
+	
 	public static String bytesToHex(byte[] bytes) {
 		final char[] hexArray = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
 		char[] hexChars = new char[bytes.length * 2];

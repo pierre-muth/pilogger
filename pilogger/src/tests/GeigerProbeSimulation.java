@@ -1,5 +1,7 @@
 package tests;
 
+import javax.swing.JComponent;
+
 import com.pi4j.io.serial.SerialPortException;
 
 import datachannel.AbstractProbe;
@@ -44,6 +46,12 @@ public class GeigerProbeSimulation extends AbstractProbe {
 			}
 
 		}
+	}
+
+	@Override
+	public JComponent[] getGuiComponents() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	
