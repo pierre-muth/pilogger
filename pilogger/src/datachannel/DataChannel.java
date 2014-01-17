@@ -20,6 +20,7 @@ import java.util.TimerTask;
 
 import pilogger.UploadFTP;
 
+import cern.jdve.data.DataSet;
 import cern.jdve.data.ShiftingDataSet;
 
 /**
@@ -62,15 +63,18 @@ public class DataChannel {
 	private BufferedWriter logFileWriter;
 	private BufferedWriter onlineFileWriter;
 	
-	private double daySum = 0;
+	private double daySum = 0; 
+	private long dayTimeSum = 0;
 	private double dayMin = Double.POSITIVE_INFINITY, dayMax = Double.NEGATIVE_INFINITY;
 	private int dayCount = 0;
 	
-	private double monthSum = 0;
+	private double monthSum = 0; 
+	private long monthTimeSum = 0;
 	private double monthMin = Double.POSITIVE_INFINITY, monthMax = Double.NEGATIVE_INFINITY;
 	private int monthCount = 0;
 	
 	private double yearSum = 0;
+	private long yearTimeSum = 0;
 	private double yearMin = Double.POSITIVE_INFINITY, yearMax = Double.NEGATIVE_INFINITY;
 	private int yearCount = 0;
 	
@@ -159,9 +163,9 @@ public class DataChannel {
 	}
 	
 	private void processNewData(double data) {
-		double time = System.currentTimeMillis();
+		long time = System.currentTimeMillis();
 		realTimeDataSet.add(time, data);
-		averagingTask.addPoint(data);
+		averagingTask.addPoint(time, data);
 	}
 	
 	private void processAveragedData(AveragedDataPoint averagedDataPoint, boolean fromFile) {
@@ -175,19 +179,24 @@ public class DataChannel {
 	
 	private void processNewHourDataForDayDataSets(AveragedDataPoint averagedDataPoint, boolean fromFile) {
 		daySum += averagedDataPoint.value;
-		if (averagedDataPoint.value < dayMin) dayMin = averagedDataPoint.value;
-		if (averagedDataPoint.value > dayMax) dayMax = averagedDataPoint.value;
+		dayTimeSum += averagedDataPoint.time;
+		if (averagedDataPoint.min < dayMin) dayMin = averagedDataPoint.min;
+		if (averagedDataPoint.max > dayMax) dayMax = averagedDataPoint.max;
 		dayCount++;
 		if (dayCount > HOUR_POINTS_TO_DAY_POINT) {
-			dayDataSet.add(averagedDataPoint.time, daySum/dayCount);
-			dayMinDataSet.add(averagedDataPoint.time, dayMin);
-			dayMaxDataSet.add(averagedDataPoint.time, dayMax);
+			long averageTime = dayTimeSum/dayCount;
+			double averageValue = daySum/dayCount;
 			
-			averagedDataPoint = new AveragedDataPoint(averagedDataPoint.time, daySum/dayCount, dayMin, dayMax);
+			dayDataSet.add(averageTime, averageValue);
+			dayMinDataSet.add(averageTime, dayMin);
+			dayMaxDataSet.add(averageTime, dayMax);
+			
+			averagedDataPoint = new AveragedDataPoint(averageTime, averageValue, dayMin, dayMax);
 			processNewDayData(averagedDataPoint, fromFile);
-			if (!fromFile) putOnlineDayData();
+			if (!fromFile) putOnline();
 			
 			daySum = 0;
+			dayTimeSum = 0;
 			dayMin = Double.POSITIVE_INFINITY;
 			dayMax = Double.NEGATIVE_INFINITY;
 			dayCount = 0;
@@ -197,19 +206,23 @@ public class DataChannel {
 	
 	private void processNewDayData(AveragedDataPoint averagedDataPoint, boolean fromFile) {
 		monthSum += averagedDataPoint.value;
-		if (averagedDataPoint.value < monthMin) monthMin = averagedDataPoint.value;
-		if (averagedDataPoint.value > monthMax) monthMax = averagedDataPoint.value;
+		monthTimeSum += averagedDataPoint.time;
+		if (averagedDataPoint.min < monthMin) monthMin = averagedDataPoint.min;
+		if (averagedDataPoint.max > monthMax) monthMax = averagedDataPoint.max;
 		monthCount++;
 		if (monthCount > DAY_POINTS_TO_MONTH_POINT) {
-			monthDataSet.add(averagedDataPoint.time, monthSum/monthCount);
-			monthMinDataSet.add(averagedDataPoint.time, monthMin);
-			monthMaxDataSet.add(averagedDataPoint.time, monthMax);
+			long averageTime = monthTimeSum/monthCount;
+			double averageValue = monthSum/monthCount;
 			
-			averagedDataPoint = new AveragedDataPoint(averagedDataPoint.time, monthSum/monthCount, monthMin, monthMax);
+			monthDataSet.add(averageTime, averageValue);
+			monthMinDataSet.add(averageTime, monthMin);
+			monthMaxDataSet.add(averageTime, monthMax);
+			
+			averagedDataPoint = new AveragedDataPoint(averageTime, averageValue, monthMin, monthMax);
 			processNewMonthData(averagedDataPoint);
-			if (!fromFile) putOnlineMonthData();
 			
 			monthSum = 0;
+			monthTimeSum = 0;
 			monthMin = Double.POSITIVE_INFINITY;
 			monthMax = Double.NEGATIVE_INFINITY;
 			monthCount = 0;
@@ -219,15 +232,20 @@ public class DataChannel {
 
 	private void processNewMonthData(AveragedDataPoint averagedDataPoint) {
 		yearSum += averagedDataPoint.value;
-		if (averagedDataPoint.value < yearMin) yearMin = averagedDataPoint.value;
-		if (averagedDataPoint.value > yearMax) yearMax = averagedDataPoint.value;
+		yearTimeSum += averagedDataPoint.time;
+		if (averagedDataPoint.min < yearMin) yearMin = averagedDataPoint.min;
+		if (averagedDataPoint.max > yearMax) yearMax = averagedDataPoint.max;
 		yearCount++;
 		if (yearCount > MONTH_POINTS_TO_YEAR_POINT) {
-			yearDataSet.add(averagedDataPoint.time, yearSum/yearCount);
-			yearMinDataSet.add(averagedDataPoint.time, yearMin);
-			yearMaxDataSet.add(averagedDataPoint.time, yearMax);
+			long averageTime = yearTimeSum/yearCount;
+			double averageValue = yearSum/yearCount;
+			
+			yearDataSet.add(averageTime, averageValue);
+			yearMinDataSet.add(averageTime, yearMin);
+			yearMaxDataSet.add(averageTime, yearMax);
 			
 			yearSum = 0;
+			yearTimeSum = 0;
 			yearMin = Double.POSITIVE_INFINITY;
 			yearMax = Double.NEGATIVE_INFINITY;
 			yearCount = 0;
@@ -237,7 +255,7 @@ public class DataChannel {
 	private void logAveragedDataToFile(AveragedDataPoint averagedDataPoint) {
 		if (logFileWriter == null) return;
 		try {
-			logFileWriter.write(Double.toString(averagedDataPoint.time)
+			logFileWriter.write(Long.toString(averagedDataPoint.time)
 					+", "
 					+Double.toString(averagedDataPoint.value)
 					+", "
@@ -258,12 +276,12 @@ public class DataChannel {
 			String line;
 			String[] elements;
 			int count = 0;
-			
-			double time = Double.NaN, value = Double.NaN, min = Double.NaN, max = Double.NaN;
+			long time = 0;
+			double value = Double.NaN, min = Double.NaN, max = Double.NaN;
 			
 			while ((line = logFileReader.readLine()) != null) {
 				elements = line.split(", ");
-				if (elements.length > 0) time = Double.parseDouble(elements[0]);
+				if (elements.length > 0) time = (long) Double.parseDouble(elements[0]);
 				if (elements.length > 1) value = Double.parseDouble(elements[1]);
 				if (elements.length > 2) max = Double.parseDouble(elements[2]);
 				if (elements.length > 3) min = Double.parseDouble(elements[3]);
@@ -276,78 +294,68 @@ public class DataChannel {
 			System.out.print(" Ok  ");
 	}
 	
-	private void putOnlineDayData() {
-		Path onlineDayFilePath = piloggerOnlineDir.resolve(logFileName+"Day.csv");
+	private void putOnlineDataSet(DataSet dataset, DataSet minDataset, DataSet maxDataset, String timeScale) {
+		Path onlineFilePath = piloggerOnlineDir.resolve(logFileName+timeScale+".csv");
 		
 		try {
-			onlineFileWriter = Files.newBufferedWriter(onlineDayFilePath, Charset.defaultCharset(), new OpenOption[] {
+			onlineFileWriter = Files.newBufferedWriter(onlineFilePath, Charset.defaultCharset(), new OpenOption[] {
 				StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE});
 			
 			onlineFileWriter.write("Time, "+channelName+", Min, Max\n");
-		
-			for (int i = 0; i < dayDataSet.getDataCount(); i++) {
-
-				onlineFileWriter.write(
-						Double.toString(dayDataSet.getX(i))
-						+", "
-						+Double.toString(dayDataSet.getY(i))
-						+", "
-						+Double.toString(dayMinDataSet.getY(i))
-						+", "
-						+Double.toString(dayMaxDataSet.getY(i))
-						+"\n");
+			
+			String time, value, min, max;
+			for (int i = 0; i < dataset.getDataCount(); i++) {
+				time = Double.toString(dataset.getX(i));
+				value = Double.toString(dataset.getY(i));
+				if (minDataset != null) min = Double.toString(minDataset.getY(i));
+				else min = "";
+				if (maxDataset != null) max = Double.toString(maxDataset.getY(i));
+				else max = "";
+				onlineFileWriter.write(time+", "+value+", "+min+", "+max+"\n");
 			}
 			
 			onlineFileWriter.flush();
 			onlineFileWriter.close();
 			
-			UploadFTP.store(onlineDayFilePath);
+			UploadFTP.store(onlineFilePath);
 			
 		} catch (Exception e) {
-			System.out.println(new Date().toString()+" Fail to upload online Day data for "+channelName);
+			System.out.println(new Date().toString()+" Fail to upload online "+ timeScale +" data for "+channelName);
 		} 
-		
+	}
+	
+	private void putOnlineRealTimeData() {
+		putOnlineDataSet(realTimeDataSet, null, null, "Realtime");		
+	}
+	
+	private void putOnlineHourData() {
+		putOnlineDataSet(hourDataSet, hourMinDataSet, hourMaxDataSet, "Hour");		
+	}
+	
+	private void putOnlineDayData() {
+		putOnlineDataSet(dayDataSet, dayMinDataSet, dayMaxDataSet, "Day");		
 	}
 	
 	private void putOnlineMonthData() {
-		Path onlineMonthFilePath = piloggerOnlineDir.resolve(logFileName+"Month.csv");
-		try {
-			onlineFileWriter = Files.newBufferedWriter(onlineMonthFilePath, Charset.defaultCharset(), new OpenOption[] {
-				StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE});
-			
-			onlineFileWriter.write("Time, "+channelName+", Min, Max\n");
-		
-			for (int i = 0; i < monthDataSet.getDataCount(); i++) {
-
-				onlineFileWriter.write(
-						Double.toString(monthDataSet.getX(i))
-						+", "
-						+Double.toString(monthDataSet.getY(i))
-						+", "
-						+Double.toString(monthMinDataSet.getY(i))
-						+", "
-						+Double.toString(monthMaxDataSet.getY(i))
-						+"\n");
-			}
-			
-			onlineFileWriter.flush();
-			onlineFileWriter.close();
-			
-			UploadFTP.store(onlineMonthFilePath);
-			
-		} catch (Exception e) {
-			System.out.println(new Date().toString()+" Fail to upload online Month data for "+channelName);
-		} 
+		putOnlineDataSet(monthDataSet, monthMinDataSet, monthMaxDataSet, "Month");
 	}
 	
 	private void putOnlineYearData() {
-		Path onlineYearFilePath = piloggerOnlineDir.resolve(logFileName+"Year.csv");
-		
+		putOnlineDataSet(yearDataSet, yearMinDataSet, yearMaxDataSet, "Year");		
+	}
+	
+	private void putOnline() {
+		putOnlineRealTimeData();
+		putOnlineHourData();
+		putOnlineDayData();
+		putOnlineMonthData();
+		putOnlineYearData();
 	}
 	
 	private class AveragingTask extends TimerTask{
-		private double sum, count;
+		private double sum;
 		private double min, max;
+		private long timeSum, count;
 		
 		public AveragingTask() {
 			initVariables();
@@ -356,7 +364,7 @@ public class DataChannel {
 		@Override
 		public void run() {
 			if (count > 0) {
-				double time = System.currentTimeMillis();
+				long time = timeSum/count;
 				double av = sum/count;
 				AveragedDataPoint averagedDataPoint = new AveragedDataPoint(time, av, min, max);
 				DataChannel.this.processAveragedData(averagedDataPoint, false);
@@ -365,8 +373,9 @@ public class DataChannel {
 			initVariables();
 		}
 		
-		public void addPoint(double dataPoint) {
+		public void addPoint(long time, double dataPoint) {
 			sum += dataPoint;
+			timeSum += time;
 			count++;
 			if (dataPoint < min) min = dataPoint;
 			if (dataPoint > max) max = dataPoint;
@@ -374,6 +383,7 @@ public class DataChannel {
 		
 		private void initVariables () {
 			sum = 0;
+			timeSum = 0;
 			count = 0;
 			min = Double.POSITIVE_INFINITY;
 			max = Double.NEGATIVE_INFINITY;
@@ -382,14 +392,14 @@ public class DataChannel {
 	}
 	
 	public class AveragedDataPoint {
-		public double time;
+		public long time;
 		public double value;
 		public double min;
 		public double max;
 		
 		public AveragedDataPoint() {
 		}
-		public AveragedDataPoint(double time, double value, double min, double max) {
+		public AveragedDataPoint(long time, double value, double min, double max) {
 			this.time = time;
 			this.value = value;
 			this.max = max;
