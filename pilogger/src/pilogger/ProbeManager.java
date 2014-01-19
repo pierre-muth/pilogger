@@ -50,6 +50,8 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 			item0.setFont(PiloggerGUI.labelFont);
 			item1.setFont(PiloggerGUI.labelFont);
 			
+			gui.getLedPanel().add(channel.getBlinkPanel());
+			
 			// first default selection
 			if (scale0selectedChannel == null)
 				scale0selectedChannel = channel;
@@ -80,6 +82,7 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 
 	@Override
 	public void dataReceived(DataReceivedEvent dataReceivedEvent) {
+		
 	}
 	
 	private void resetDisplayedDataset() {

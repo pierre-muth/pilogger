@@ -7,13 +7,6 @@ import javax.swing.JComponent;
  * and should provide an array of these DataChannels
  */
 public abstract class AbstractProbe {
-	
 	abstract public DataChannel[] getChannels();
 	abstract public JComponent[] getGuiComponents();
-
-	public void addDataListenerToChannels(DataChannelListener l) {
-		for (int i = 0; i < getChannels().length; i++) {
-			getChannels()[i].addDataChannelListener(l);
-		}
-	}
 }

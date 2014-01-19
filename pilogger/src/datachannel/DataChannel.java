@@ -1,5 +1,7 @@
 package datachannel;
 
+import java.awt.Color;
+import java.awt.Dimension;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -17,6 +19,11 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import javax.swing.border.EtchedBorder;
+import javax.swing.border.LineBorder;
 
 import pilogger.UploadFTP;
 
@@ -77,6 +84,8 @@ public class DataChannel {
 	private long yearTimeSum = 0;
 	private double yearMin = Double.POSITIVE_INFINITY, yearMax = Double.NEGATIVE_INFINITY;
 	private int yearCount = 0;
+	
+	private JPanel blinkPanel;
 	
 	/**
 	 *  DataChannel own dataSet of 4 different time scale
@@ -153,6 +162,19 @@ public class DataChannel {
 		processNewData(data);
 		DataReceivedEvent event = new DataReceivedEvent(data);
 		fireDataEvent(event);
+		Blinker b = new Blinker();
+		b.start();
+	}
+	
+	public JPanel getBlinkPanel() {
+		if (blinkPanel == null) {
+			blinkPanel = new JPanel();
+			blinkPanel.setBorder(new LineBorder(Color.gray));
+			blinkPanel.setBackground(Color.black);
+			blinkPanel.setPreferredSize(new Dimension(8, 8));
+			blinkPanel.setToolTipText(channelName);
+		}
+		return blinkPanel;
 	}
 
 	protected void fireDataEvent(DataReceivedEvent dataReceivedEvent) {
@@ -404,6 +426,54 @@ public class DataChannel {
 			this.value = value;
 			this.max = max;
 			this.min = min;
+		}
+	}
+	
+	private class Blinker extends Thread {
+		private static final int DELAY = 100;
+		
+		@Override
+		public void run() {
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {	DataChannel.this.getBlinkPanel().setBackground(Color.white); }
+			});
+			try {
+				sleep(DELAY);
+			} catch (InterruptedException e) {}
+			
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {	DataChannel.this.getBlinkPanel().setBackground(Color.lightGray); }
+			});
+			try {
+				sleep(DELAY);
+			} catch (InterruptedException e) {}
+			
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {	DataChannel.this.getBlinkPanel().setBackground(Color.gray); }
+			});
+			try {
+				sleep(DELAY);
+			} catch (InterruptedException e) {}
+			
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {	DataChannel.this.getBlinkPanel().setBackground(Color.darkGray); }
+			});
+			try {
+				sleep(DELAY);
+			} catch (InterruptedException e) {}
+			
+			
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					DataChannel.this.getBlinkPanel().setBackground(Color.black);
+				}
+			});
+			
 		}
 	}
 }

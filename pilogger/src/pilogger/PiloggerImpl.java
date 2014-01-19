@@ -32,7 +32,6 @@ public class PiloggerImpl extends PiloggerGUI{
     	if (simulation) {
     		probeManager.addProbe(new BMP085probeSimulation());
     		probeManager.addProbe(new GeigerProbeSimulation());
-    		probeManager.addProbe(new SystemProbe());
     	} else {
     		initI2CandBMP085probe();
     		initComAndGeigerProbe(); 

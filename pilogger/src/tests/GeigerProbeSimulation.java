@@ -39,7 +39,7 @@ public class GeigerProbeSimulation extends AbstractProbe {
 			while (true) {
 				geigerChannel.newData(Math.random()*0.3);
 				try {
-					sleep(1000);
+					sleep(2000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				} 

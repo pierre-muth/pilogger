@@ -5,6 +5,7 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -62,11 +63,21 @@ public abstract class PiloggerGUI extends JPanel {
 		if (chartCard == null) {
 			chartCard = new JPanel();
 			chartCard.setBackground(Color.black);
-			chartCard.setLayout(new BorderLayout());
+			chartCard.setLayout(new BorderLayout(0, 0));
 			chartCard.add(getMainChart(), BorderLayout.CENTER);
 			chartCard.add(getNorthConfigPanel(), BorderLayout.NORTH);
+			chartCard.add(getLedPanel(), BorderLayout.SOUTH);
 		}
 		return chartCard;
+	}
+	
+	private JPanel ledPanel;
+	protected JPanel getLedPanel() {
+		if (ledPanel == null) {
+			ledPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
+			ledPanel.setBackground(Color.black);
+		}
+		return ledPanel;
 	}
 	
 	private JPanel confCard;
