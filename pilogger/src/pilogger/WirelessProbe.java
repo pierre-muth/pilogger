@@ -4,6 +4,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -45,13 +46,18 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 	private GpioController gpio;
 	private GpioPinDigitalOutput CE;
 	private GpioPinDigitalInput IRQ;
-
+	private Watchdog watchdog;
+	private static final int WATCHDOG_DELAY = 20000;
+	
 	public WirelessProbe(GpioController gpio) {
 		this.gpio = gpio;
 		initGPIO();
 		initNRF24L01();
 		IRQ.addListener(this);
 
+		Timer t = new Timer();
+		watchdog = new Watchdog();
+		t.schedule(watchdog, WATCHDOG_DELAY, WATCHDOG_DELAY);
 	}
 
 	@Override
@@ -83,12 +89,12 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 		packet[0] = 0b00111101;
 		packet[1] = 0b00000100;
 		Spi.wiringPiSPIDataRW(0, packet, 2);
-		
+
 		// write RF setup : 250Kbps
 		packet[0] = 0b00100110;
 		packet[1] = 0b00100110;
 		Spi.wiringPiSPIDataRW(0, packet, 2);
-		
+
 		// write EN_RXADDR : enable RX address pipe 0 & 1 & 2 
 		packet[0] = 0b00100010;
 		packet[1] = 0b00000111;
@@ -116,6 +122,8 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 	public void handleGpioPinDigitalStateChangeEvent(GpioPinDigitalStateChangeEvent event) {
 		if (event.getState().isHigh()) return;
 
+		watchdog.reset();
+		
 		byte packet[] = new byte[2];
 
 		// read R_RX_PL_WID Register
@@ -123,28 +131,34 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 		packet[1] = 0x00;
 		Spi.wiringPiSPIDataRW(0, packet, 2);
 
-		int payloadLenght = packet[1];
-		byte readPayload[] = new byte[payloadLenght+1];
+		if (packet[0] == 0x0E) {
+			// if Status byte mean not interrupt append and RX buffer empty
+			// reset the nFR module
+			initNRF24L01();
+		} else {
+			int payloadLenght = packet[1];
+			byte readPayload[] = new byte[payloadLenght+1];
 
-		//read RX 
-		readPayload[0] = 0b01100001;
-		Spi.wiringPiSPIDataRW(0, readPayload, payloadLenght+1);
+			//read RX 
+			readPayload[0] = 0b01100001;
+			Spi.wiringPiSPIDataRW(0, readPayload, payloadLenght+1);
 
-		//Flush RX FIFO
-		packet[0] = (byte) 0xE2;
-		Spi.wiringPiSPIDataRW(0, packet, 1);
+			//Flush RX FIFO
+			packet[0] = (byte) 0xE2;
+			Spi.wiringPiSPIDataRW(0, packet, 1);
 
-		//clear interupts
-		packet[0] = 0b00100111;
-		packet[1] = 0x70;
-		Spi.wiringPiSPIDataRW(0, packet, 2);
+			//clear interupts
+			packet[0] = 0b00100111;
+			packet[1] = 0x70;
+			Spi.wiringPiSPIDataRW(0, packet, 2);
 
-		processPayload(readPayload);
+			processPayload(readPayload);
+		}
 	}
 
 	private void processPayload (byte[] redPayload) {
-//		System.out.println( Utils.bytesToHex(redPayload) );
-				
+		//		System.out.println( Utils.bytesToHex(redPayload) );
+
 		if (redPayload[0] == 0x40) { 		// pipe 0 : solar probe
 			processSolarProbe(redPayload);
 		} else if (redPayload[0] == 0x42) { // pipe 1 : cellar
@@ -154,7 +168,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 		}
 
 	}
-	
+
 	private void processSeismo(byte[] redPayload) {
 		if (redPayload[1] == 'P') {	// Heating Exhaust
 			if (redPayload[2] == '2') {
@@ -170,7 +184,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 			}
 		}
 	}
-	
+
 	private void processCellarTemp(byte[] redPayload) {
 		byte reject = (byte) 0xFF;
 		if (redPayload[1] == 'T' && redPayload[2] == 'A') {	// Heating Exhaust
@@ -243,11 +257,11 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 
 			}
 		}
-		
+
 	}
-	
+
 	private void processSeismoProbe(byte[] redPayload) {
-		
+
 		if (redPayload[1] == 'P') {	
 			if (redPayload[2] == '2') {
 				byte pHigh = redPayload[3];
@@ -256,15 +270,15 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 				if (pLow < 0) i = 256 + pLow ;
 				else i = pLow;
 				i+= pHigh*256;
-				
-//				testChannel.newData(i);
+
+				//				testChannel.newData(i);
 			}
 		}
 	}
-	
+
 	private void processSolarProbe(byte[] redPayload) {
 		if (redPayload.length < 11) return;
-		
+
 		// Temperature info
 		if (redPayload[1] == 'T') {	
 			if (redPayload[2] == '2') {
@@ -307,7 +321,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 	public JComponent[] getGuiComponents() {
 		return new JComponent[] {getResetButton()};
 	}
-	
+
 	private JButton resetButton;
 	private JButton getResetButton() {
 		if (resetButton == null) {
@@ -319,7 +333,29 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 				}
 			});
 		}
-		
+
 		return resetButton;
+	}
+	private class Watchdog extends TimerTask {
+		private long lastInterruptTime = 0;
+		
+		public Watchdog() {
+			reset();
+		}
+		
+		@Override
+		public void run() {
+			long currentTime = System.currentTimeMillis();
+			if (currentTime - lastInterruptTime > WATCHDOG_DELAY) {
+				System.out.println(new Date().toString()+": WirelessProbe Watchdog: More than "+WATCHDOG_DELAY/1000+
+						"s between received data\n-> Reseting nRF24L01+ module");
+				WirelessProbe.this.initNRF24L01();
+			}
+		}
+		
+		public void reset() {
+			lastInterruptTime = System.currentTimeMillis();
+		}
+		
 	}
 }
