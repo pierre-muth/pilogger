@@ -7,6 +7,7 @@ import java.awt.event.ActionListener;
 import java.util.HashMap;
 
 import javax.swing.JMenuItem;
+import javax.swing.SwingUtilities;
 
 import datachannel.AbstractProbe;
 import datachannel.DataChannel;
@@ -20,7 +21,7 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 	private HashMap<TimeScale, String> timeScaleText = new HashMap<>();
 	private DataChannel scale0selectedChannel;
 	private DataChannel scale1selectedChannel;
-	private TimeScale timeScaleSelected = TimeScale.DAY;
+	private TimeScale timeScaleSelected = TimeScale.MONTH;
 	/**
 	 * Manage the probes by generating Gui according to 
 	 * the channels provided. Switch accordingly the dataset
@@ -33,12 +34,10 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 	}
 	public void addProbe(AbstractProbe probe) {
 		for (int i = 0; i < probe.getChannels().length; i++) {
-			DataChannel channel = probe.getChannels()[i]; 
+			final DataChannel channel = probe.getChannels()[i]; 
 			channel.addDataChannelListener(this);
-			JMenuItem item0 = new JMenuItem(channel.channelName);
-			JMenuItem item1 = new JMenuItem(channel.channelName);
-			gui.getScale0menu().add(item0);
-			gui.getScale1menu().add(item1);
+			final JMenuItem item0 = new JMenuItem(channel.channelName);
+			final JMenuItem item1 = new JMenuItem(channel.channelName);
 			scale0channelMap.put(item0, channel);
 			scale1channelMap.put(item1, channel);
 			item0.addActionListener(this);
@@ -50,7 +49,15 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 			item0.setFont(PiloggerGUI.labelFont);
 			item1.setFont(PiloggerGUI.labelFont);
 			
-			gui.getLedPanel().add(channel.getBlinkPanel());
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					gui.getScale0menu().add(item0);
+					gui.getScale1menu().add(item1);			
+					gui.getLedPanel().add(channel.getBlinkPanel());
+					gui.getLedPanel().revalidate();
+				}
+			});
 			
 			// first default selection
 			if (scale0selectedChannel == null)

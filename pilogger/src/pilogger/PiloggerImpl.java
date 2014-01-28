@@ -2,6 +2,8 @@ package pilogger;
 
 import java.io.IOException;
 
+import javax.swing.JPanel;
+
 import tests.BMP085probeSimulation;
 import tests.GeigerProbeSimulation;
 
@@ -16,19 +18,22 @@ import com.pi4j.io.serial.SerialFactory;
 import com.pi4j.io.serial.SerialPortException;
 import com.pi4j.wiringpi.Spi;
 
-public class PiloggerImpl extends PiloggerGUI{
+public class PiloggerImpl {
 	private BMP085probe bmp085Probe;
     private GeigerProbe geigerCounter;
     private SystemProbe systemProbe;
     private WirelessProbe wirelessProbe;
+    private ProbeManager probeManager;
+    private PiloggerGUI gui;
     
-    private ProbeManager probeManager = new ProbeManager(this);
-
     /**
      * Implementation of the Pilogger application GUI
      * Initialize links and Probes
      */
-    public PiloggerImpl(boolean simulation) {
+    public PiloggerImpl(boolean simulation, PiloggerGUI gui) {
+    	
+    	probeManager = new ProbeManager(gui);
+    	
     	if (simulation) {
     		probeManager.addProbe(new BMP085probeSimulation());
     		probeManager.addProbe(new GeigerProbeSimulation());
@@ -40,7 +45,7 @@ public class PiloggerImpl extends PiloggerGUI{
     	}
     	
     } 
-
+    
     private void initComAndGeigerProbe() {
     	try {
     		final Serial serial = SerialFactory.createInstance();

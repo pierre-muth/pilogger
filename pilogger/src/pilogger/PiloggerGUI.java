@@ -24,7 +24,7 @@ import cern.jdve.renderer.DiffAreaChartRenderer;
 import cern.jdve.renderer.PolylineChartRenderer;
 import cern.jdve.scale.TimeStepsDefinition;
 
-public abstract class PiloggerGUI extends JPanel {
+public class PiloggerGUI extends JPanel {
 	public static Font labelFont = new Font("Dialog", Font.PLAIN, 9);
 	private Color line0ChartColor = new Color(255, 255, 255, 255);
 	private Color line1ChartColor = new Color(128, 128, 128, 255);

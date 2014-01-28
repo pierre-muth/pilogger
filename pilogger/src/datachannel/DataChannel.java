@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -36,22 +37,23 @@ import cern.jdve.data.ShiftingDataSet;
 public class DataChannel {
 	public static final String logFileDirectory = "/home/pi/projects/pilogger/logs/";
 	public static final String onlineFileLocalDirectory = "/home/pi/projects/pilogger/logs/online/";
-	
+
 	private Path piloggerOnlineDir;
-	
+	private Path logFilePath;
+
 	public String channelName;
 	private String unit = "";
-	
+
 	private String logFileName = "";
 	private ArrayList<DataChannelListener> dataListenersList = new ArrayList<>();
 
 	private static final int CHART_BUFFER_LENGTH = 300;
-	
+
 	private static final int MS_TO_HOUR_POINT = 15000;
 	private static final int HOUR_POINTS_TO_DAY_POINT = 20;
 	private static final int DAY_POINTS_TO_MONTH_POINT = 30;
 	private static final int MONTH_POINTS_TO_YEAR_POINT = 12;
-	
+
 	public ShiftingDataSet realTimeDataSet;
 	public ShiftingDataSet hourDataSet;
 	public ShiftingDataSet hourMaxDataSet;
@@ -65,28 +67,30 @@ public class DataChannel {
 	public ShiftingDataSet yearDataSet;
 	public ShiftingDataSet yearMaxDataSet;
 	public ShiftingDataSet yearMinDataSet;
-	
+
 	private AveragingTask averagingTask;
 	private BufferedWriter logFileWriter;
 	private BufferedWriter onlineFileWriter;
-	
+
 	private double daySum = 0; 
 	private long dayTimeSum = 0;
 	private double dayMin = Double.POSITIVE_INFINITY, dayMax = Double.NEGATIVE_INFINITY;
 	private int dayCount = 0;
-	
+
 	private double monthSum = 0; 
 	private long monthTimeSum = 0;
 	private double monthMin = Double.POSITIVE_INFINITY, monthMax = Double.NEGATIVE_INFINITY;
 	private int monthCount = 0;
-	
+
 	private double yearSum = 0;
 	private long yearTimeSum = 0;
 	private double yearMin = Double.POSITIVE_INFINITY, yearMax = Double.NEGATIVE_INFINITY;
 	private int yearCount = 0;
-	
+
 	private JPanel blinkPanel;
-	
+
+	private AtomicBoolean isFileLoading = new AtomicBoolean(false);
+
 	/**
 	 *  DataChannel own dataSet of 4 different time scale
 	 *  and fire DataReceivedEvent when newData()
@@ -96,11 +100,11 @@ public class DataChannel {
 		this.channelName = uniqueChannelName;
 		this.logFileName = logFileName;
 		realTimeDataSet = new ShiftingDataSet(channelName+"Real Time", CHART_BUFFER_LENGTH, true);
-		
+
 		hourDataSet = new ShiftingDataSet(channelName+"Hour", CHART_BUFFER_LENGTH, true);
 		hourMaxDataSet = new ShiftingDataSet(channelName+" Hour max", CHART_BUFFER_LENGTH, true);
 		hourMinDataSet = new ShiftingDataSet(channelName+" Hour min", CHART_BUFFER_LENGTH, true);
-		
+
 		dayDataSet = new ShiftingDataSet(channelName+"Day", CHART_BUFFER_LENGTH, true);
 		dayMaxDataSet = new ShiftingDataSet(channelName+" Day max", CHART_BUFFER_LENGTH, true);
 		dayMinDataSet = new ShiftingDataSet(channelName+" Day min", CHART_BUFFER_LENGTH, true);
@@ -108,21 +112,17 @@ public class DataChannel {
 		monthDataSet = new ShiftingDataSet(channelName+"Month", CHART_BUFFER_LENGTH, true);
 		monthMaxDataSet = new ShiftingDataSet(channelName+" Month max", CHART_BUFFER_LENGTH, true);
 		monthMinDataSet = new ShiftingDataSet(channelName+" Month min", CHART_BUFFER_LENGTH, true);
-		
+
 		yearDataSet = new ShiftingDataSet(channelName+"Year", CHART_BUFFER_LENGTH, true);
 		yearMaxDataSet = new ShiftingDataSet(channelName+"Year max", CHART_BUFFER_LENGTH, true);
 		yearMinDataSet = new ShiftingDataSet(channelName+"Year min", CHART_BUFFER_LENGTH, true);
-		
-		
+
+
 		Path piloggerDir = Paths.get(logFileDirectory);
-        Path logFilePath = piloggerDir.resolve(logFileName+".csv");
-        
-        try {
-			loadLogFile(logFilePath);
-		} catch (IOException e1) {
-			System.out.println("\n No "+logFileName+".csv found in "+logFileDirectory+", creating file...");
-		}
-        
+		logFilePath = piloggerDir.resolve(logFileName+".csv");
+
+		loadLogFile(logFilePath);
+
 		try {
 			logFileWriter = Files.newBufferedWriter(logFilePath, Charset.defaultCharset(), new OpenOption[] {
 				StandardOpenOption.APPEND, StandardOpenOption.CREATE});
@@ -131,11 +131,11 @@ public class DataChannel {
 		}
 
 		piloggerOnlineDir = Paths.get(onlineFileLocalDirectory);
-		
+
 		Timer t = new Timer();
 		averagingTask = new AveragingTask();
 		t.schedule(averagingTask, MS_TO_HOUR_POINT, MS_TO_HOUR_POINT);
-		
+
 	}
 	public String getUnit() {
 		return unit;
@@ -157,15 +157,17 @@ public class DataChannel {
 	public void clearDataChannelListener() {
 		dataListenersList.clear();
 	}
-	
+
 	public void newData(double data) {
+		if (isFileLoading.get() == true) return;
+
 		processNewData(data);
 		DataReceivedEvent event = new DataReceivedEvent(data);
 		fireDataEvent(event);
 		Blinker b = new Blinker();
 		b.start();
 	}
-	
+
 	public JPanel getBlinkPanel() {
 		if (blinkPanel == null) {
 			blinkPanel = new JPanel();
@@ -183,22 +185,22 @@ public class DataChannel {
 			dataListener.dataReceived(dataReceivedEvent);
 		}
 	}
-	
+
 	private void processNewData(double data) {
 		long time = System.currentTimeMillis();
 		realTimeDataSet.add(time, data);
 		averagingTask.addPoint(time, data);
 	}
-	
+
 	private void processAveragedData(AveragedDataPoint averagedDataPoint, boolean fromFile) {
 		hourDataSet.add(averagedDataPoint.time, averagedDataPoint.value);
 		hourMaxDataSet.add(averagedDataPoint.time, averagedDataPoint.max);
 		hourMinDataSet.add(averagedDataPoint.time, averagedDataPoint.min);
-		
+
 		processNewHourDataForDayDataSets(averagedDataPoint, fromFile);
 		if(!fromFile) logAveragedDataToFile(averagedDataPoint);
 	}
-	
+
 	private void processNewHourDataForDayDataSets(AveragedDataPoint averagedDataPoint, boolean fromFile) {
 		daySum += averagedDataPoint.value;
 		dayTimeSum += averagedDataPoint.time;
@@ -208,24 +210,24 @@ public class DataChannel {
 		if (dayCount > HOUR_POINTS_TO_DAY_POINT) {
 			long averageTime = dayTimeSum/dayCount;
 			double averageValue = daySum/dayCount;
-			
+
 			dayDataSet.add(averageTime, averageValue);
 			dayMinDataSet.add(averageTime, dayMin);
 			dayMaxDataSet.add(averageTime, dayMax);
-			
+
 			averagedDataPoint = new AveragedDataPoint(averageTime, averageValue, dayMin, dayMax);
 			processNewDayData(averagedDataPoint, fromFile);
 			if (!fromFile) putOnline();
-			
+
 			daySum = 0;
 			dayTimeSum = 0;
 			dayMin = Double.POSITIVE_INFINITY;
 			dayMax = Double.NEGATIVE_INFINITY;
 			dayCount = 0;
-			
+
 		}
 	}
-	
+
 	private void processNewDayData(AveragedDataPoint averagedDataPoint, boolean fromFile) {
 		monthSum += averagedDataPoint.value;
 		monthTimeSum += averagedDataPoint.time;
@@ -235,20 +237,20 @@ public class DataChannel {
 		if (monthCount > DAY_POINTS_TO_MONTH_POINT) {
 			long averageTime = monthTimeSum/monthCount;
 			double averageValue = monthSum/monthCount;
-			
+
 			monthDataSet.add(averageTime, averageValue);
 			monthMinDataSet.add(averageTime, monthMin);
 			monthMaxDataSet.add(averageTime, monthMax);
-			
+
 			averagedDataPoint = new AveragedDataPoint(averageTime, averageValue, monthMin, monthMax);
 			processNewMonthData(averagedDataPoint);
-			
+
 			monthSum = 0;
 			monthTimeSum = 0;
 			monthMin = Double.POSITIVE_INFINITY;
 			monthMax = Double.NEGATIVE_INFINITY;
 			monthCount = 0;
-			
+
 		}
 	}
 
@@ -261,11 +263,11 @@ public class DataChannel {
 		if (yearCount > MONTH_POINTS_TO_YEAR_POINT) {
 			long averageTime = yearTimeSum/yearCount;
 			double averageValue = yearSum/yearCount;
-			
+
 			yearDataSet.add(averageTime, averageValue);
 			yearMinDataSet.add(averageTime, yearMin);
 			yearMaxDataSet.add(averageTime, yearMax);
-			
+
 			yearSum = 0;
 			yearTimeSum = 0;
 			yearMin = Double.POSITIVE_INFINITY;
@@ -273,58 +275,39 @@ public class DataChannel {
 			yearCount = 0;
 		}
 	}
-	
+
 	private void logAveragedDataToFile(AveragedDataPoint averagedDataPoint) {
 		if (logFileWriter == null) return;
 		try {
 			logFileWriter.write(Long.toString(averagedDataPoint.time)
 					+", "
-					+Double.toString(averagedDataPoint.value)
-					+", "
-					+Double.toString(averagedDataPoint.max)
-					+", "
-					+Double.toString(averagedDataPoint.min)
-					+"\n");
+							+Double.toString(averagedDataPoint.value)
+							+", "
+							+Double.toString(averagedDataPoint.max)
+							+", "
+							+Double.toString(averagedDataPoint.min)
+							+"\n");
 			logFileWriter.flush();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
-	
-	private void loadLogFile(Path logFilePath) throws IOException {
-			System.out.print("\n Now loading logged data : "+ logFilePath.getFileName());
-		
-			BufferedReader logFileReader = Files.newBufferedReader(logFilePath, Charset.defaultCharset());
-			String line;
-			String[] elements;
-			int count = 0;
-			long time = 0;
-			double value = Double.NaN, min = Double.NaN, max = Double.NaN;
-			
-			while ((line = logFileReader.readLine()) != null) {
-				elements = line.split(", ");
-				if (elements.length > 0) time = (long) Double.parseDouble(elements[0]);
-				if (elements.length > 1) value = Double.parseDouble(elements[1]);
-				if (elements.length > 2) max = Double.parseDouble(elements[2]);
-				if (elements.length > 3) min = Double.parseDouble(elements[3]);
-			
-				AveragedDataPoint averagedDataPoint = new AveragedDataPoint(time, value, min, max);
-				processAveragedData(averagedDataPoint, true);
-				count++;
-				if (count % 2000 == 0) System.out.print(".");
-			}
-			System.out.print(" Ok  ");
+
+	private void loadLogFile(final Path logFilePath) {
+		FileLoader loader = new FileLoader();
+		loader.setPriority(Thread.MIN_PRIORITY);
+		loader.start();
 	}
-	
+
 	private void putOnlineDataSet(DataSet dataset, DataSet minDataset, DataSet maxDataset, String timeScale) {
 		Path onlineFilePath = piloggerOnlineDir.resolve(logFileName+timeScale+".csv");
-		
+
 		try {
 			onlineFileWriter = Files.newBufferedWriter(onlineFilePath, Charset.defaultCharset(), new OpenOption[] {
 				StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE});
-			
+
 			onlineFileWriter.write("Time, "+channelName+", Min, Max\n");
-			
+
 			String time, value, min, max;
 			for (int i = 0; i < dataset.getDataCount(); i++) {
 				time = Double.toString(dataset.getX(i));
@@ -335,37 +318,37 @@ public class DataChannel {
 				else max = "";
 				onlineFileWriter.write(time+", "+value+", "+min+", "+max+"\n");
 			}
-			
+
 			onlineFileWriter.flush();
 			onlineFileWriter.close();
-			
+
 			UploadFTP.store(onlineFilePath);
-			
+
 		} catch (Exception e) {
 			System.out.println(new Date().toString()+" Fail to upload online "+ timeScale +" data for "+channelName);
 		} 
 	}
-	
+
 	private void putOnlineRealTimeData() {
 		putOnlineDataSet(realTimeDataSet, null, null, "Realtime");		
 	}
-	
+
 	private void putOnlineHourData() {
 		putOnlineDataSet(hourDataSet, hourMinDataSet, hourMaxDataSet, "Hour");		
 	}
-	
+
 	private void putOnlineDayData() {
 		putOnlineDataSet(dayDataSet, dayMinDataSet, dayMaxDataSet, "Day");		
 	}
-	
+
 	private void putOnlineMonthData() {
 		putOnlineDataSet(monthDataSet, monthMinDataSet, monthMaxDataSet, "Month");
 	}
-	
+
 	private void putOnlineYearData() {
 		putOnlineDataSet(yearDataSet, yearMinDataSet, yearMaxDataSet, "Year");		
 	}
-	
+
 	private void putOnline() {
 		putOnlineRealTimeData();
 		putOnlineHourData();
@@ -373,16 +356,16 @@ public class DataChannel {
 		putOnlineMonthData();
 		putOnlineYearData();
 	}
-	
+
 	private class AveragingTask extends TimerTask{
 		private double sum;
 		private double min, max;
 		private long timeSum, count;
-		
+
 		public AveragingTask() {
 			initVariables();
 		}
-		
+
 		@Override
 		public void run() {
 			if (count > 0) {
@@ -391,10 +374,10 @@ public class DataChannel {
 				AveragedDataPoint averagedDataPoint = new AveragedDataPoint(time, av, min, max);
 				DataChannel.this.processAveragedData(averagedDataPoint, false);
 			}
-			
+
 			initVariables();
 		}
-		
+
 		public void addPoint(long time, double dataPoint) {
 			sum += dataPoint;
 			timeSum += time;
@@ -402,7 +385,7 @@ public class DataChannel {
 			if (dataPoint < min) min = dataPoint;
 			if (dataPoint > max) max = dataPoint;
 		}
-		
+
 		private void initVariables () {
 			sum = 0;
 			timeSum = 0;
@@ -410,15 +393,15 @@ public class DataChannel {
 			min = Double.POSITIVE_INFINITY;
 			max = Double.NEGATIVE_INFINITY;
 		}
-		
+
 	}
-	
+
 	public class AveragedDataPoint {
 		public long time;
 		public double value;
 		public double min;
 		public double max;
-		
+
 		public AveragedDataPoint() {
 		}
 		public AveragedDataPoint(long time, double value, double min, double max) {
@@ -428,10 +411,50 @@ public class DataChannel {
 			this.min = min;
 		}
 	}
+
+	private class FileLoader extends Thread {
+		
+		@Override
+		public void run() {
+			isFileLoading.set(true);
+			BufferedReader logFileReader = null;
+
+			try {
+				logFileReader = Files.newBufferedReader(logFilePath, Charset.defaultCharset());
+
+				String line;
+				String[] elements;
+				long time = 0;
+				double value = Double.NaN, min = Double.NaN, max = Double.NaN;
+
+				while ((line = logFileReader.readLine()) != null) {
+					elements = line.split(", ");
+					if (elements.length > 0) time = (long) Double.parseDouble(elements[0]);
+					if (elements.length > 1) value = Double.parseDouble(elements[1]);
+					if (elements.length > 2) max = Double.parseDouble(elements[2]);
+					if (elements.length > 3) min = Double.parseDouble(elements[3]);
+
+					AveragedDataPoint averagedDataPoint = new AveragedDataPoint(time, value, min, max);
+					processAveragedData(averagedDataPoint, true);
+					
+					//sleep(1); // to not overload the system
+				}
+
+				System.out.print(channelName+" Loaded.");
+				
+			} catch (NumberFormatException | IOException e) {
+				e.printStackTrace();
+			}
+
+			isFileLoading.set(false);
+		}
+		
+		
+	}
 	
 	private class Blinker extends Thread {
 		private static final int DELAY = 100;
-		
+
 		@Override
 		public void run() {
 			SwingUtilities.invokeLater(new Runnable() {
@@ -441,7 +464,7 @@ public class DataChannel {
 			try {
 				sleep(DELAY);
 			} catch (InterruptedException e) {}
-			
+
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
 				public void run() {	DataChannel.this.getBlinkPanel().setBackground(Color.lightGray); }
@@ -449,7 +472,7 @@ public class DataChannel {
 			try {
 				sleep(DELAY);
 			} catch (InterruptedException e) {}
-			
+
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
 				public void run() {	DataChannel.this.getBlinkPanel().setBackground(Color.gray); }
@@ -457,7 +480,7 @@ public class DataChannel {
 			try {
 				sleep(DELAY);
 			} catch (InterruptedException e) {}
-			
+
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
 				public void run() {	DataChannel.this.getBlinkPanel().setBackground(Color.darkGray); }
@@ -465,15 +488,15 @@ public class DataChannel {
 			try {
 				sleep(DELAY);
 			} catch (InterruptedException e) {}
-			
-			
+
+
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
 				public void run() {
 					DataChannel.this.getBlinkPanel().setBackground(Color.black);
 				}
 			});
-			
+
 		}
 	}
 }
