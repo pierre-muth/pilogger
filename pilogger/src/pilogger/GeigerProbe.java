@@ -14,6 +14,7 @@ import datachannel.DataReceivedEvent;
 public class GeigerProbe extends AbstractProbe implements SerialDataListener {
 	public static final int GEIGER_SERIAL_SPEED = 9600;
 	public DataChannel geigerChannel = new DataChannel("Backgound Radiation", "Backgound_Radiation");
+	public DataChannel cpsChannel = new DataChannel("Count per second", "Count_per_second");
 	private String inbuf = "";
 	 
 	/**
@@ -36,6 +37,8 @@ public class GeigerProbe extends AbstractProbe implements SerialDataListener {
     		if (blocks.length > 5) {
     			double dose = Double.valueOf(blocks[5]);
     			geigerChannel.newData(dose);
+    			int cps = Integer.valueOf(blocks[1]);
+    			cpsChannel.newData(cps);
     		}
     		inbuf = "";
     	}
@@ -43,7 +46,7 @@ public class GeigerProbe extends AbstractProbe implements SerialDataListener {
 
 	@Override
 	public DataChannel[] getChannels() {
-		return new DataChannel[] {geigerChannel};
+		return new DataChannel[] {geigerChannel, cpsChannel};
 	}
 
 	@Override

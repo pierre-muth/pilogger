@@ -436,7 +436,6 @@ public class DataChannel {
 
 					AveragedDataPoint averagedDataPoint = new AveragedDataPoint(time, value, min, max);
 					processAveragedData(averagedDataPoint, true);
-					
 					//sleep(1); // to not overload the system
 				}
 

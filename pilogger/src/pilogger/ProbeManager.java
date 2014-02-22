@@ -1,7 +1,9 @@
 package pilogger;
 
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.HashMap;
@@ -40,14 +42,17 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 			final JMenuItem item1 = new JMenuItem(channel.channelName);
 			scale0channelMap.put(item0, channel);
 			scale1channelMap.put(item1, channel);
-			item0.addActionListener(this);
-			item1.addActionListener(this);
 			item0.setBackground(Color.black);
 			item1.setBackground(Color.black);
 			item0.setForeground(Color.white);
 			item1.setForeground(Color.white);			
+			item0.setPreferredSize(new Dimension(150, 11));
+			item1.setPreferredSize(new Dimension(150, 11));
 			item0.setFont(PiloggerGUI.labelFont);
 			item1.setFont(PiloggerGUI.labelFont);
+			item0.addActionListener(this);
+			item1.addActionListener(this);
+			
 			
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override

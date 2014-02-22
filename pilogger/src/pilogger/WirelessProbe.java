@@ -33,6 +33,9 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 	public DataChannel heatingReturnChannel = new DataChannel("Heating Return", "Heating_Return");
 	public DataChannel cellarTemperatureChannel = new DataChannel("Cellar Temperature", "Cellar_temperature");
 	public DataChannel seismoChannel = new DataChannel("Seismometer", "Seismometer");
+	public DataChannel humidChannel = new DataChannel("Relative Humidity", "Rel_Humidity");
+	public DataChannel outTemperature2Channel = new DataChannel("Outside Temperature 2", "Outside_Temperature2");
+	
 	private DataChannel[] channels = new DataChannel[] {
 			outTemperatureChannel, 
 			outLightChannel, 
@@ -41,7 +44,9 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 			heatingInflowChannel, 
 			heatingReturnChannel, 
 			cellarTemperatureChannel,
-			seismoChannel};
+			seismoChannel,
+			humidChannel,
+			outTemperature2Channel};
 
 	private GpioController gpio;
 	private GpioPinDigitalOutput CE;
@@ -292,7 +297,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 				short shortVal = bb.getShort(0);
 
 				double temperature = shortVal * 0.0625;
-				if (temperature < 80)
+				if (temperature < 80 && temperature > -45)
 					outTemperatureChannel.newData(temperature);
 
 			}
@@ -313,6 +318,40 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 				if (redPayload[10] < 0)	i = 256 + redPayload[10] ;
 				else i = redPayload[10];
 				outBatteryChannel.newData(i);
+			}
+		}
+		// DHT values
+		if (redPayload[11] == 'D') {	
+			if (redPayload[12] == '5') {
+				byte checksum = (byte) (redPayload[13] + redPayload[14] +redPayload[15] +redPayload[16]);
+			    
+			    if (checksum != redPayload[17]) {
+			    	System.out.println(new Date().toString()+" DHT checksum fail");
+			    	return;
+			    }
+			    
+			    //Rel humidity
+			    ByteBuffer bb = ByteBuffer.allocate(2);
+				bb.order(ByteOrder.BIG_ENDIAN);
+				bb.put(redPayload[13]);
+				bb.put(redPayload[14]);
+				short shortVal = bb.getShort(0);
+				double relHumi = ((double)shortVal)/10;
+				if (relHumi < 100 && relHumi > 0)
+					humidChannel.newData(relHumi);
+				
+				// Temperature
+				bb = ByteBuffer.allocate(2);
+				bb.order(ByteOrder.BIG_ENDIAN);
+				bb.put(redPayload[15]);
+				bb.put(redPayload[16]);
+				shortVal = bb.getShort(0);
+				double temperature = ((double)shortVal)/10;
+				if ( (redPayload[15] & 0x80) == 0x80)
+					temperature = -temperature;
+				if (temperature < 80 && temperature > -45)
+					outTemperature2Channel.newData(temperature);
+			    
 			}
 		}
 	}
