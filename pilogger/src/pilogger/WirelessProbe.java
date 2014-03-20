@@ -386,8 +386,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 		public void run() {
 			long currentTime = System.currentTimeMillis();
 			if (currentTime - lastInterruptTime > WATCHDOG_DELAY) {
-				System.out.println(new Date().toString()+": WirelessProbe Watchdog: More than "+WATCHDOG_DELAY/1000+
-						"s between received data\n-> Reseting nRF24L01+ module");
+				System.out.println(new Date().toString()+": Reseting nRF24L01+ module");
 				WirelessProbe.this.initNRF24L01();
 			}
 		}

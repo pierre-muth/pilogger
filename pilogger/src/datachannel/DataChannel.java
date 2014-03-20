@@ -123,13 +123,6 @@ public class DataChannel {
 
 		loadLogFile(logFilePath);
 
-		try {
-			logFileWriter = Files.newBufferedWriter(logFilePath, Charset.defaultCharset(), new OpenOption[] {
-				StandardOpenOption.APPEND, StandardOpenOption.CREATE});
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
 		piloggerOnlineDir = Paths.get(onlineFileLocalDirectory);
 
 		Timer t = new Timer();
@@ -277,8 +270,10 @@ public class DataChannel {
 	}
 
 	private void logAveragedDataToFile(AveragedDataPoint averagedDataPoint) {
-		if (logFileWriter == null) return;
 		try {
+			logFileWriter = Files.newBufferedWriter(logFilePath, Charset.defaultCharset(), new OpenOption[] {
+				StandardOpenOption.APPEND, StandardOpenOption.CREATE});
+			
 			logFileWriter.write(Long.toString(averagedDataPoint.time)
 					+", "
 							+Double.toString(averagedDataPoint.value)
@@ -288,6 +283,7 @@ public class DataChannel {
 							+Double.toString(averagedDataPoint.min)
 							+"\n");
 			logFileWriter.flush();
+			logFileWriter.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -325,7 +321,7 @@ public class DataChannel {
 			UploadFTP.store(onlineFilePath);
 
 		} catch (Exception e) {
-			System.out.println(new Date().toString()+" Fail to upload online "+ timeScale +" data for "+channelName);
+			System.out.println(new Date().toString()+" Fail FTP upload "+ timeScale +" "+channelName);
 		} 
 	}
 
@@ -421,7 +417,6 @@ public class DataChannel {
 
 			try {
 				logFileReader = Files.newBufferedReader(logFilePath, Charset.defaultCharset());
-
 				String line;
 				String[] elements;
 				long time = 0;
@@ -439,6 +434,10 @@ public class DataChannel {
 					//sleep(1); // to not overload the system
 				}
 
+				logFileReader.close();
+				logFileReader = null;
+				line = null;
+				elements = null;
 				System.out.print(channelName+" Loaded.");
 				
 			} catch (NumberFormatException | IOException e) {
@@ -459,14 +458,6 @@ public class DataChannel {
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
 				public void run() {	DataChannel.this.getBlinkPanel().setBackground(Color.white); }
-			});
-			try {
-				sleep(DELAY);
-			} catch (InterruptedException e) {}
-
-			SwingUtilities.invokeLater(new Runnable() {
-				@Override
-				public void run() {	DataChannel.this.getBlinkPanel().setBackground(Color.lightGray); }
 			});
 			try {
 				sleep(DELAY);

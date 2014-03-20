@@ -57,7 +57,7 @@ public class PiloggerImpl {
     }
 	private void initI2CandBMP085probe() {
     	try {
-			final I2CBus bus = I2CFactory.getInstance(I2CBus.BUS_0);
+			final I2CBus bus = I2CFactory.getInstance(I2CBus.BUS_1);
 			bmp085Probe = new BMP085probe(bus);
 			probeManager.addProbe(bmp085Probe);
 		} catch (IOException e) {
