@@ -170,7 +170,7 @@ public class BMP085probe extends AbstractProbe{
 						dataCount = 0;
 					}
 					
-					sleep(100); 
+					sleep(200); 
 				}
 				
 			} catch (IOException | InterruptedException e) {

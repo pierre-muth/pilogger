@@ -59,7 +59,7 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 				public void run() {
 					gui.getScale0menu().add(item0);
 					gui.getScale1menu().add(item1);			
-					gui.getLedPanel().add(channel.getBlinkPanel());
+					gui.getLedPanel().add(channel.getChannelButton());
 					gui.getLedPanel().revalidate();
 				}
 			});

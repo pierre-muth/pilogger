@@ -2,6 +2,8 @@ package datachannel;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -21,13 +23,16 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
+import javax.swing.JRadioButton;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EtchedBorder;
 import javax.swing.border.LineBorder;
 
 import pilogger.UploadFTP;
-
 import cern.jdve.data.DataSet;
 import cern.jdve.data.ShiftingDataSet;
 
@@ -47,12 +52,12 @@ public class DataChannel {
 	private String logFileName = "";
 	private ArrayList<DataChannelListener> dataListenersList = new ArrayList<>();
 
-	private static final int CHART_BUFFER_LENGTH = 300;
+	private static final int CHART_BUFFER_LENGTH = 600;
 
 	private static final int MS_TO_HOUR_POINT = 15000;
-	private static final int HOUR_POINTS_TO_DAY_POINT = 20;
-	private static final int DAY_POINTS_TO_MONTH_POINT = 30;
-	private static final int MONTH_POINTS_TO_YEAR_POINT = 12;
+	private static final int HOUR_POINTS_TO_DAY_POINT = 10;
+	private static final int DAY_POINTS_TO_MONTH_POINT = 15;
+	private static final int MONTH_POINTS_TO_YEAR_POINT = 6;
 
 	public ShiftingDataSet realTimeDataSet;
 	public ShiftingDataSet hourDataSet;
@@ -87,8 +92,9 @@ public class DataChannel {
 	private double yearMin = Double.POSITIVE_INFINITY, yearMax = Double.NEGATIVE_INFINITY;
 	private int yearCount = 0;
 
-	private JPanel blinkPanel;
-
+	private JButton blinkButton;
+	
+	private AtomicBoolean isRecording = new AtomicBoolean(true);
 	private AtomicBoolean isFileLoading = new AtomicBoolean(false);
 
 	/**
@@ -152,8 +158,8 @@ public class DataChannel {
 	}
 
 	public void newData(double data) {
-		if (isFileLoading.get() == true) return;
-
+		if (isFileLoading.get()) return;
+		
 		processNewData(data);
 		DataReceivedEvent event = new DataReceivedEvent(data);
 		fireDataEvent(event);
@@ -161,15 +167,28 @@ public class DataChannel {
 		b.start();
 	}
 
-	public JPanel getBlinkPanel() {
-		if (blinkPanel == null) {
-			blinkPanel = new JPanel();
-			blinkPanel.setBorder(new LineBorder(Color.gray));
-			blinkPanel.setBackground(Color.black);
-			blinkPanel.setPreferredSize(new Dimension(8, 8));
-			blinkPanel.setToolTipText(channelName);
+	public JComponent getChannelButton() {
+		if (blinkButton == null) {
+			blinkButton = new JButton();
+			blinkButton.setBorder(new LineBorder(Color.gray));
+			blinkButton.setBackground(Color.black);
+			blinkButton.setPreferredSize(new Dimension(8, 8));
+			blinkButton.setToolTipText(channelName);
+			blinkButton.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					isRecording.set(! isRecording.get()); 
+					SwingUtilities.invokeLater(new Runnable() {
+						@Override
+						public void run() {
+							if (isRecording.get()) blinkButton.setBorder(new LineBorder(Color.gray));
+							else blinkButton.setBorder(new LineBorder(Color.darkGray));
+						}
+					});
+				}
+			});
 		}
-		return blinkPanel;
+		return blinkButton;
 	}
 
 	protected void fireDataEvent(DataReceivedEvent dataReceivedEvent) {
@@ -182,7 +201,8 @@ public class DataChannel {
 	private void processNewData(double data) {
 		long time = System.currentTimeMillis();
 		realTimeDataSet.add(time, data);
-		averagingTask.addPoint(time, data);
+		if (isRecording.get()) 
+			averagingTask.addPoint(time, data);
 	}
 
 	private void processAveragedData(AveragedDataPoint averagedDataPoint, boolean fromFile) {
@@ -321,7 +341,7 @@ public class DataChannel {
 			UploadFTP.store(onlineFilePath);
 
 		} catch (Exception e) {
-			System.out.println(new Date().toString()+" Fail FTP upload "+ timeScale +" "+channelName);
+			System.out.println(new Date().toString()+": Fail FTP "+ timeScale +" "+channelName);
 		} 
 	}
 
@@ -457,7 +477,7 @@ public class DataChannel {
 		public void run() {
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
-				public void run() {	DataChannel.this.getBlinkPanel().setBackground(Color.white); }
+				public void run() {	DataChannel.this.getChannelButton().setBackground(Color.white); }
 			});
 			try {
 				sleep(DELAY);
@@ -465,7 +485,7 @@ public class DataChannel {
 
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
-				public void run() {	DataChannel.this.getBlinkPanel().setBackground(Color.gray); }
+				public void run() {	DataChannel.this.getChannelButton().setBackground(Color.gray); }
 			});
 			try {
 				sleep(DELAY);
@@ -473,7 +493,7 @@ public class DataChannel {
 
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
-				public void run() {	DataChannel.this.getBlinkPanel().setBackground(Color.darkGray); }
+				public void run() {	DataChannel.this.getChannelButton().setBackground(Color.darkGray); }
 			});
 			try {
 				sleep(DELAY);
@@ -483,7 +503,7 @@ public class DataChannel {
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
 				public void run() {
-					DataChannel.this.getBlinkPanel().setBackground(Color.black);
+					DataChannel.this.getChannelButton().setBackground(Color.black);
 				}
 			});
 

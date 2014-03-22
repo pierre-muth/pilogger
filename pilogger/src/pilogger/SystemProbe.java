@@ -13,13 +13,13 @@ import datachannel.DataChannel;
 public class SystemProbe extends AbstractProbe {
 
 	private DataChannel memoryChannel = new DataChannel("System Memory", "System_Memory");
-//	private DataChannel cpuTempChannel = new DataChannel("System temperature", "System_CPU_temp");
+	private DataChannel cpuTempChannel = new DataChannel("CPU temperature", "CPU_temp");
 	private DataChannel loadChannel = new DataChannel("System Load", "System_Load");
-	private DataChannel[] channels = new DataChannel[]{memoryChannel, loadChannel};
+	private DataChannel[] channels = new DataChannel[]{memoryChannel, loadChannel, cpuTempChannel};
 	
 	public SystemProbe() {
-		MemAndLoadReaderThread memAndLoadReaderThread = new MemAndLoadReaderThread();
-		memAndLoadReaderThread.start();
+		SystemInfoReaderThread systemInfoReaderThread = new SystemInfoReaderThread();
+		systemInfoReaderThread.start();
 	}
 	
 	@Override
@@ -27,14 +27,15 @@ public class SystemProbe extends AbstractProbe {
 		return channels;
 	}
 	
-	private class MemAndLoadReaderThread extends Thread {
+	private class SystemInfoReaderThread extends Thread {
 		@Override
 		public void run() {
 			try {
 				while (true) {
 					memoryChannel.newData( SystemInfo.getMemoryUsed() );
+					cpuTempChannel.newData( SystemInfo.getCpuTemperature() );
 					loadChannel.newData( ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage() );
-					sleep(1000);
+					sleep(2500);
 				}
 			} catch (InterruptedException | NumberFormatException | IOException e) {
 				e.printStackTrace();
@@ -47,19 +48,5 @@ public class SystemProbe extends AbstractProbe {
 		// TODO Auto-generated method stub
 		return null;
 	}
-	
-//	private class CPUtempReaderThread extends Thread {
-//		@Override
-//		public void run() {
-//			try {
-//				while (true) {
-//					cpuTempChannel.newData( SystemInfo.getCpuTemperature() );
-//					sleep(5000);
-//				}
-//			} catch (InterruptedException | NumberFormatException | IOException e) {
-//				e.printStackTrace();
-//			} 
-//		}
-//	}
 
 }
