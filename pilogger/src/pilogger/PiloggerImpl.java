@@ -4,9 +4,12 @@ import java.io.IOException;
 
 import javax.swing.JPanel;
 
+import probes.BMP085probe;
+import probes.GeigerProbe;
+import probes.SystemProbe;
+import probes.WirelessProbe;
 import tests.BMP085probeSimulation;
 import tests.GeigerProbeSimulation;
-
 import cern.jdve.data.DefaultDataSet;
 
 import com.pi4j.io.gpio.GpioController;

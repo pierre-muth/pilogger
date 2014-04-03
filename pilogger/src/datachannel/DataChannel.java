@@ -56,7 +56,7 @@ public class DataChannel {
 
 	private static final int MS_TO_HOUR_POINT = 15000;
 	private static final int HOUR_POINTS_TO_DAY_POINT = 10;
-	private static final int DAY_POINTS_TO_MONTH_POINT = 15;
+	private static final int DAY_POINTS_TO_MONTH_POINT = 18;
 	private static final int MONTH_POINTS_TO_YEAR_POINT = 6;
 
 	public ShiftingDataSet realTimeDataSet;
@@ -75,7 +75,6 @@ public class DataChannel {
 
 	private AveragingTask averagingTask;
 	private BufferedWriter logFileWriter;
-	private BufferedWriter onlineFileWriter;
 
 	private double daySum = 0; 
 	private long dayTimeSum = 0;
@@ -319,7 +318,7 @@ public class DataChannel {
 		Path onlineFilePath = piloggerOnlineDir.resolve(logFileName+timeScale+".csv");
 
 		try {
-			onlineFileWriter = Files.newBufferedWriter(onlineFilePath, Charset.defaultCharset(), new OpenOption[] {
+			BufferedWriter onlineFileWriter = Files.newBufferedWriter(onlineFilePath, Charset.defaultCharset(), new OpenOption[] {
 				StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE});
 
 			onlineFileWriter.write("Time, "+channelName+", Min, Max\n");
@@ -471,7 +470,7 @@ public class DataChannel {
 	}
 	
 	private class Blinker extends Thread {
-		private static final int DELAY = 100;
+		private static final int DELAY = 200;
 
 		@Override
 		public void run() {
@@ -481,30 +480,12 @@ public class DataChannel {
 			});
 			try {
 				sleep(DELAY);
-			} catch (InterruptedException e) {}
+			} catch (InterruptedException e) { e.printStackTrace(); }
 
+			
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
-				public void run() {	DataChannel.this.getChannelButton().setBackground(Color.gray); }
-			});
-			try {
-				sleep(DELAY);
-			} catch (InterruptedException e) {}
-
-			SwingUtilities.invokeLater(new Runnable() {
-				@Override
-				public void run() {	DataChannel.this.getChannelButton().setBackground(Color.darkGray); }
-			});
-			try {
-				sleep(DELAY);
-			} catch (InterruptedException e) {}
-
-
-			SwingUtilities.invokeLater(new Runnable() {
-				@Override
-				public void run() {
-					DataChannel.this.getChannelButton().setBackground(Color.black);
-				}
+				public void run() { DataChannel.this.getChannelButton().setBackground(Color.black);	}
 			});
 
 		}

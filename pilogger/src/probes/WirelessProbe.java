@@ -1,4 +1,4 @@
-package pilogger;
+package probes;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -20,7 +20,6 @@ import com.pi4j.io.gpio.event.GpioPinDigitalStateChangeEvent;
 import com.pi4j.io.gpio.event.GpioPinListenerDigital;
 import com.pi4j.wiringpi.Spi;
 
-import datachannel.AbstractProbe;
 import datachannel.DataChannel;
 
 public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigital{
@@ -138,7 +137,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 
 		if (packet[0] == 0x0E) {
 			// if Status byte mean not interrupt append and RX buffer empty
-			// reset the nFR module
+			// reset the nRF module
 			initNRF24L01();
 		} else {
 			int payloadLenght = packet[1];
@@ -175,7 +174,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 	}
 
 	private void processSeismo(byte[] redPayload) {
-		if (redPayload[1] == 'P') {	// Heating Exhaust
+		if (redPayload[1] == 'P') {	
 			if (redPayload[2] == '2') {
 				byte HV = redPayload[3];
 				byte LV = redPayload[4];

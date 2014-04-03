@@ -1,4 +1,4 @@
-package pilogger;
+package probes;
 
 import javax.swing.JComponent;
 
@@ -7,7 +7,6 @@ import com.pi4j.io.serial.SerialDataEvent;
 import com.pi4j.io.serial.SerialDataListener;
 import com.pi4j.io.serial.SerialPortException;
 
-import datachannel.AbstractProbe;
 import datachannel.DataChannel;
 import datachannel.DataReceivedEvent;
 

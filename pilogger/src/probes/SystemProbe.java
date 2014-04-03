@@ -1,4 +1,4 @@
-package pilogger;
+package probes;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -7,7 +7,6 @@ import javax.swing.JComponent;
 
 import com.pi4j.system.SystemInfo;
 
-import datachannel.AbstractProbe;
 import datachannel.DataChannel;
 
 public class SystemProbe extends AbstractProbe {

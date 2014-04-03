@@ -11,7 +11,7 @@ import java.util.HashMap;
 import javax.swing.JMenuItem;
 import javax.swing.SwingUtilities;
 
-import datachannel.AbstractProbe;
+import probes.AbstractProbe;
 import datachannel.DataChannel;
 import datachannel.DataChannelListener;
 import datachannel.DataReceivedEvent;

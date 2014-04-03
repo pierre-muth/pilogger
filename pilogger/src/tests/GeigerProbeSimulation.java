@@ -2,9 +2,10 @@ package tests;
 
 import javax.swing.JComponent;
 
+import probes.AbstractProbe;
+
 import com.pi4j.io.serial.SerialPortException;
 
-import datachannel.AbstractProbe;
 import datachannel.DataChannel;
 
 public class GeigerProbeSimulation extends AbstractProbe {

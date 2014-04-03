@@ -1,6 +1,8 @@
-package datachannel;
+package probes;
 
 import javax.swing.JComponent;
+
+import datachannel.DataChannel;
 
 /**
  * Probe add listener to all provided DataChannels
