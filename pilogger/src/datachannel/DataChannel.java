@@ -95,6 +95,8 @@ public class DataChannel {
 	
 	private AtomicBoolean isRecording = new AtomicBoolean(true);
 	private AtomicBoolean isFileLoading = new AtomicBoolean(false);
+	private boolean isDifferential = false;
+	private double previousData = Double.NaN;
 
 	/**
 	 *  DataChannel own dataSet of 4 different time scale
@@ -135,6 +137,16 @@ public class DataChannel {
 		t.schedule(averagingTask, MS_TO_HOUR_POINT, MS_TO_HOUR_POINT);
 
 	}
+	
+	public DataChannel(String uniqueChannelName, String logFileName, boolean isDifferencial) {
+		this(uniqueChannelName, logFileName);
+		this.isDifferential = isDifferencial;
+	}
+	
+	public void setDifferentialMode(boolean isDiff) {
+		this.isDifferential = isDiff;
+	}
+	
 	public String getUnit() {
 		return unit;
 	}
@@ -158,6 +170,17 @@ public class DataChannel {
 
 	public void newData(double data) {
 		if (isFileLoading.get()) return;
+		
+		if (isDifferential) {
+			if (Double.isNaN(previousData)) {
+				previousData = data;
+				data = 0;
+			} else {
+				double substract = data - previousData;
+				previousData = data;
+				data = substract;
+			}
+		}
 		
 		processNewData(data);
 		DataReceivedEvent event = new DataReceivedEvent(data);
@@ -337,7 +360,10 @@ public class DataChannel {
 			onlineFileWriter.flush();
 			onlineFileWriter.close();
 
-			UploadFTP.store(onlineFilePath);
+			boolean succes = UploadFTP.store(onlineFilePath);
+			if (!succes) {
+				System.out.println(new Date().toString()+": Fail FTP "+ timeScale +" "+channelName);
+			}
 
 		} catch (Exception e) {
 			System.out.println(new Date().toString()+": Fail FTP "+ timeScale +" "+channelName);
@@ -460,7 +486,7 @@ public class DataChannel {
 				System.out.print(channelName+" Loaded.");
 				
 			} catch (NumberFormatException | IOException e) {
-				e.printStackTrace();
+				System.out.println(channelName+" not exists or corrupted");
 			}
 
 			isFileLoading.set(false);
@@ -470,7 +496,7 @@ public class DataChannel {
 	}
 	
 	private class Blinker extends Thread {
-		private static final int DELAY = 200;
+		private static final int DELAY = 100;
 
 		@Override
 		public void run() {

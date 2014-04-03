@@ -32,6 +32,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 	public DataChannel heatingReturnChannel = new DataChannel("Heating Return", "Heating_Return");
 	public DataChannel cellarTemperatureChannel = new DataChannel("Cellar Temperature", "Cellar_temperature");
 	public DataChannel seismoChannel = new DataChannel("Seismometer", "Seismometer");
+	public DataChannel seismoDifferentialChannel = new DataChannel("Seismometer Diff", "Seismometer_Diff", true);
 	public DataChannel humidChannel = new DataChannel("Relative Humidity", "Rel_Humidity");
 	public DataChannel outTemperature2Channel = new DataChannel("Outside Temperature 2", "Outside_Temperature2");
 	
@@ -44,6 +45,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 			heatingReturnChannel, 
 			cellarTemperatureChannel,
 			seismoChannel,
+			seismoDifferentialChannel,
 			humidChannel,
 			outTemperature2Channel};
 
@@ -184,6 +186,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 				bb.put(HV);
 				short shortVal = bb.getShort(0);
 				seismoChannel.newData(shortVal);
+				seismoDifferentialChannel.newData(shortVal);
 
 			}
 		}
