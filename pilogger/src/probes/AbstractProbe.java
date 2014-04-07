@@ -2,7 +2,7 @@ package probes;
 
 import javax.swing.JComponent;
 
-import datachannel.DataChannel;
+import pilogger.DataChannel;
 
 /**
  * Probe add listener to all provided DataChannels

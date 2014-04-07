@@ -5,9 +5,9 @@ import java.lang.management.ManagementFactory;
 
 import javax.swing.JComponent;
 
-import com.pi4j.system.SystemInfo;
+import pilogger.DataChannel;
 
-import datachannel.DataChannel;
+import com.pi4j.system.SystemInfo;
 
 public class SystemProbe extends AbstractProbe {
 

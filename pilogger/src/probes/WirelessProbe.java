@@ -1,5 +1,7 @@
 package probes;
 
+import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.nio.ByteBuffer;
@@ -10,6 +12,10 @@ import java.util.TimerTask;
 
 import javax.swing.JButton;
 import javax.swing.JComponent;
+import javax.swing.border.LineBorder;
+
+import pilogger.DataChannel;
+import pilogger.PiloggerGUI;
 
 import com.pi4j.io.gpio.GpioController;
 import com.pi4j.io.gpio.GpioPinDigitalInput;
@@ -19,8 +25,6 @@ import com.pi4j.io.gpio.RaspiPin;
 import com.pi4j.io.gpio.event.GpioPinDigitalStateChangeEvent;
 import com.pi4j.io.gpio.event.GpioPinListenerDigital;
 import com.pi4j.wiringpi.Spi;
-
-import datachannel.DataChannel;
 
 public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigital{
 
@@ -367,6 +371,10 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 	private JButton getResetButton() {
 		if (resetButton == null) {
 			resetButton = new JButton("Reset nRF24L01+");
+			resetButton.setBorder(new LineBorder(Color.gray));
+			resetButton.setBackground(Color.black);
+			resetButton.setForeground(Color.white);
+			resetButton.setFont(PiloggerGUI.labelFont);
 			resetButton.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent e) {

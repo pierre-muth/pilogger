@@ -2,13 +2,12 @@ package probes;
 
 import javax.swing.JComponent;
 
+import pilogger.DataChannel;
+
 import com.pi4j.io.serial.Serial;
 import com.pi4j.io.serial.SerialDataEvent;
 import com.pi4j.io.serial.SerialDataListener;
 import com.pi4j.io.serial.SerialPortException;
-
-import datachannel.DataChannel;
-import datachannel.DataReceivedEvent;
 
 public class GeigerProbe extends AbstractProbe implements SerialDataListener {
 	public static final int GEIGER_SERIAL_SPEED = 9600;

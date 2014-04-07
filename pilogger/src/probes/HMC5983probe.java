@@ -4,10 +4,10 @@ import java.io.IOException;
 
 import javax.swing.JComponent;
 
+import pilogger.DataChannel;
+
 import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CDevice;
-
-import datachannel.DataChannel;
 
 public class HMC5983probe extends AbstractProbe {
 	public static final int HMC5983_I2C_ADDR   = 0x1E;

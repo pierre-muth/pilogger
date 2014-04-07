@@ -4,11 +4,10 @@ import java.io.IOException;
 
 import javax.swing.JComponent;
 
+import pilogger.DataChannel;
+
 import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CDevice;
-
-import datachannel.DataChannel;
-import datachannel.DataReceivedEvent;
 
 
 public class BMP085probe extends AbstractProbe{
