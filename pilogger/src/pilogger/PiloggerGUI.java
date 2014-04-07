@@ -7,6 +7,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -16,6 +17,7 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
+import javax.swing.border.TitledBorder;
 
 import cern.jdve.Chart;
 import cern.jdve.Style;
@@ -81,18 +83,56 @@ public class PiloggerGUI extends JPanel {
 	}
 	
 	private JPanel confCard;
-	protected JPanel getConfCard() {
+	private JPanel getConfCard() {
 		if (confCard == null) {
-			confCard = new JPanel();
-			confCard.setBackground(Color.gray);
-			confCard.add(getConfBackButton());
+			confCard = new JPanel(new BorderLayout());
+			confCard.setBackground(Color.black);
+			confCard.add(getConfBackButton(), BorderLayout.NORTH);
+			confCard.add(getProbeCustomPanel(), BorderLayout.CENTER);
+			confCard.add(getChannelReloadPanel(), BorderLayout.SOUTH);
 		}
 		return confCard;
 	}
+	
+	private JPanel probeCustomPanel;
+	protected JPanel getProbeCustomPanel() {
+		if (probeCustomPanel == null) {
+			probeCustomPanel = new JPanel();
+			probeCustomPanel.setBackground(Color.black);
+		}
+		return probeCustomPanel;
+	}
+	
+	private JPanel channelReloadPanel;
+	protected JPanel getChannelReloadPanel() {
+		if (channelReloadPanel == null) {
+			channelReloadPanel = new JPanel(new GridLayout(10, 2));
+			channelReloadPanel.setBackground(Color.black);
+			channelReloadPanel.setBorder(getReloadPanelBorder());
+		}
+		return channelReloadPanel;
+	}
+	
+	private TitledBorder reloadPanelBorder;
+	private TitledBorder getReloadPanelBorder() {
+		if (reloadPanelBorder == null) {
+			reloadPanelBorder = new TitledBorder("Reload from log file");
+			reloadPanelBorder.setTitleColor(Color.white);
+			reloadPanelBorder.setTitleFont(PiloggerGUI.labelFont);
+			reloadPanelBorder.setBorder(new LineBorder(Color.gray));
+		}
+		return reloadPanelBorder;
+	}
+	
 	private JButton confBackButton;
 	private JButton getConfBackButton() {
 		if (confBackButton == null) {
 			confBackButton = new JButton("Back");
+			confBackButton.setBorder(new LineBorder(Color.gray));
+			confBackButton.setBackground(Color.black);
+			confBackButton.setForeground(Color.white);
+			confBackButton.setPreferredSize(new Dimension(30, 11));
+			confBackButton.setFont(PiloggerGUI.labelFont);
 			confBackButton.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {

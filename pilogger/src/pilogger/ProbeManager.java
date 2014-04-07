@@ -2,8 +2,6 @@ package pilogger;
 
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.HashMap;
@@ -12,11 +10,8 @@ import javax.swing.JMenuItem;
 import javax.swing.SwingUtilities;
 
 import probes.AbstractProbe;
-import datachannel.DataChannel;
-import datachannel.DataChannelListener;
-import datachannel.DataReceivedEvent;
 
-public class ProbeManager implements DataChannelListener, ActionListener {
+public class ProbeManager implements ActionListener {
 	private PiloggerGUI gui;
 	private HashMap<JMenuItem, DataChannel> scale0channelMap = new HashMap<>();
 	private HashMap<JMenuItem, DataChannel> scale1channelMap = new HashMap<>();
@@ -34,10 +29,9 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 		this.gui = gui;
 		initTimeScaleMenu();
 	}
-	public void addProbe(AbstractProbe probe) {
+	public void addProbe(final AbstractProbe probe) {
 		for (int i = 0; i < probe.getChannels().length; i++) {
 			final DataChannel channel = probe.getChannels()[i]; 
-			channel.addDataChannelListener(this);
 			final JMenuItem item0 = new JMenuItem(channel.channelName);
 			final JMenuItem item1 = new JMenuItem(channel.channelName);
 			scale0channelMap.put(item0, channel);
@@ -61,6 +55,7 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 					gui.getScale1menu().add(item1);			
 					gui.getLedPanel().add(channel.getChannelButton());
 					gui.getLedPanel().revalidate();
+					gui.getChannelReloadPanel().add(channel.getReloadButton());
 				}
 			});
 			
@@ -74,9 +69,14 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 		}
 		
 		if (probe.getGuiComponents() != null && probe.getGuiComponents().length > 0) {
-			for (int i = 0; i < probe.getGuiComponents().length; i++) {
-				gui.getConfCard().add(probe.getGuiComponents()[i]);
-			}
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					for (int i = 0; i < probe.getGuiComponents().length; i++) {
+						gui.getProbeCustomPanel().add(probe.getGuiComponents()[i]);
+					}
+				}
+			});
 		}
 	}
 	
@@ -92,11 +92,6 @@ public class ProbeManager implements DataChannelListener, ActionListener {
 		resetDisplayedDataset();
 	}
 
-	@Override
-	public void dataReceived(DataReceivedEvent dataReceivedEvent) {
-		
-	}
-	
 	private void resetDisplayedDataset() {
 		if (gui.getLineDataSource0().getDataSetsCount() >0)
 			gui.getLineDataSource0().removeDataSet(0);
