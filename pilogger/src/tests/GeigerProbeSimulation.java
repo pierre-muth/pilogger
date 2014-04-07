@@ -2,11 +2,10 @@ package tests;
 
 import javax.swing.JComponent;
 
+import pilogger.DataChannel;
 import probes.AbstractProbe;
 
 import com.pi4j.io.serial.SerialPortException;
-
-import datachannel.DataChannel;
 
 public class GeigerProbeSimulation extends AbstractProbe {
 	public static final int GEIGER_SERIAL_SPEED = 9600;
