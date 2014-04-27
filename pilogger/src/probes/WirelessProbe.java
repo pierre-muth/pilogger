@@ -6,6 +6,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -332,7 +333,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 				byte checksum = (byte) (redPayload[13] + redPayload[14] +redPayload[15] +redPayload[16]);
 			    
 			    if (checksum != redPayload[17]) {
-			    	System.out.println(new Date().toString()+" DHT checksum fail");
+			    	System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+" DHT checksum fail");
 			    	return;
 			    }
 			    
@@ -396,7 +397,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 		public void run() {
 			long currentTime = System.currentTimeMillis();
 			if (currentTime - lastInterruptTime > WATCHDOG_DELAY) {
-				System.out.println(new Date().toString()+": Reseting nRF24L01+ module");
+				System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+": Reseting nRF24L01+ module");
 				WirelessProbe.this.initNRF24L01();
 			}
 		}

@@ -40,9 +40,7 @@ import cern.jdve.data.ShiftingDataSet;
  */
 public class DataChannel {
 	public static final String logFileDirectory = "/home/pi/projects/pilogger/logs/";
-	public static final String onlineFileLocalDirectory = "/home/pi/projects/pilogger/logs/online/";
 
-	private Path piloggerOnlineDir;
 	private Path logFilePath;
 
 	public String channelName;
@@ -72,7 +70,6 @@ public class DataChannel {
 	public ShiftingDataSet yearMinDataSet;
 
 	private AveragingTask averagingTask;
-	private BufferedWriter logFileWriter;
 
 	private double daySum = 0; 
 	private long dayTimeSum = 0;
@@ -131,8 +128,6 @@ public class DataChannel {
 
 		loadLogFile(logFilePath);
 
-		piloggerOnlineDir = Paths.get(onlineFileLocalDirectory);
-
 		Timer t = new Timer();
 		averagingTask = new AveragingTask();
 		t.schedule(averagingTask, MS_TO_HOUR_POINT, MS_TO_HOUR_POINT);
@@ -177,6 +172,7 @@ public class DataChannel {
 		
 		Blinker b = new Blinker();
 		b.start();
+		
 	}
 
 	public JComponent getChannelButton() {
@@ -240,7 +236,11 @@ public class DataChannel {
 		hourMinDataSet.add(averagedDataPoint.time, averagedDataPoint.min);
 
 		processNewHourDataForDayDataSets(averagedDataPoint, fromFile);
-		if(!fromFile) logAveragedDataToFile(averagedDataPoint);
+		if(!fromFile) {
+			if ( ! LogFile.store(logFilePath, averagedDataPoint) ) {
+				System.out.println("Problem with file "+logFileName+".csv");
+			}
+		}
 	}
 
 	private void processNewHourDataForDayDataSets(AveragedDataPoint averagedDataPoint, boolean fromFile) {
@@ -261,9 +261,9 @@ public class DataChannel {
 			processNewDayData(averagedDataPoint, fromFile);
 			
 			if (!fromFile) {
-				putOnlineRealTimeData();
-				putOnlineHourData();
-				putOnlineDayData();
+				writeOnlineRealTimeData();
+				writeOnlineHourData();
+				writeOnlineDayData();
 			}
 
 			daySum = 0;
@@ -293,7 +293,7 @@ public class DataChannel {
 			processNewMonthData(averagedDataPoint, fromFile);
 
 			if (!fromFile) {
-				putOnlineMonthData();
+				writeOnlineMonthData();
 			}
 			
 			monthSum = 0;
@@ -320,7 +320,7 @@ public class DataChannel {
 			yearMaxDataSet.add(averageTime, yearMax);
 			
 			if (!fromFile) {
-				putOnlineYearData();
+				writeOnlineYearData();
 			}
 
 			yearSum = 0;
@@ -328,26 +328,6 @@ public class DataChannel {
 			yearMin = Double.POSITIVE_INFINITY;
 			yearMax = Double.NEGATIVE_INFINITY;
 			yearCount = 0;
-		}
-	}
-
-	private void logAveragedDataToFile(AveragedDataPoint averagedDataPoint) {
-		try {
-			logFileWriter = Files.newBufferedWriter(logFilePath, Charset.defaultCharset(), new OpenOption[] {
-				StandardOpenOption.APPEND, StandardOpenOption.CREATE});
-			
-			logFileWriter.write(Long.toString(averagedDataPoint.time)
-					+", "
-							+Double.toString(averagedDataPoint.value)
-							+", "
-							+Double.toString(averagedDataPoint.max)
-							+", "
-							+Double.toString(averagedDataPoint.min)
-							+"\n");
-			logFileWriter.flush();
-			logFileWriter.close();
-		} catch (IOException e) {
-			System.out.println("Problem with file "+logFileName+".csv");
 		}
 	}
 
@@ -398,8 +378,8 @@ public class DataChannel {
 		yearMinDataSet.clear();
 	}
 
-	private void putOnlineDataSet(DataSet dataset, DataSet minDataset, DataSet maxDataset, String timeScale) {
-		Path onlineFilePath = piloggerOnlineDir.resolve(logFileName+timeScale+".csv");
+	private void writeOnlineDataSet(DataSet dataset, DataSet minDataset, DataSet maxDataset, String timeScale) {
+		Path onlineFilePath = Paths.get(ProbeManager.onlineFileLocalDirectory).resolve(logFileName+timeScale+".csv");
 
 		try {
 			BufferedWriter onlineFileWriter = Files.newBufferedWriter(onlineFilePath, Charset.defaultCharset(), new OpenOption[] {
@@ -421,34 +401,29 @@ public class DataChannel {
 			onlineFileWriter.flush();
 			onlineFileWriter.close();
 
-			boolean succes = UploadFTP.store(onlineFilePath);
-			if (!succes) {
-				System.out.println(new Date().toString()+": Fail FTP "+ timeScale +" "+channelName);
-			}
-
 		} catch (Exception e) {
-			System.out.println(new Date().toString()+": Fail FTP "+ timeScale +" "+channelName);
+			System.out.println(new Date().toString()+": Fail writing "+ timeScale +" "+channelName);
 		} 
 	}
 
-	private void putOnlineRealTimeData() {
-		putOnlineDataSet(realTimeDataSet, null, null, "Realtime");		
+	private void writeOnlineRealTimeData() {
+		writeOnlineDataSet(realTimeDataSet, null, null, "Realtime");		
 	}
 
-	private void putOnlineHourData() {
-		putOnlineDataSet(hourDataSet, hourMinDataSet, hourMaxDataSet, "Hour");		
+	private void writeOnlineHourData() {
+		writeOnlineDataSet(hourDataSet, hourMinDataSet, hourMaxDataSet, "Hour");		
 	}
 
-	private void putOnlineDayData() {
-		putOnlineDataSet(dayDataSet, dayMinDataSet, dayMaxDataSet, "Day");		
+	private void writeOnlineDayData() {
+		writeOnlineDataSet(dayDataSet, dayMinDataSet, dayMaxDataSet, "Day");		
 	}
 
-	private void putOnlineMonthData() {
-		putOnlineDataSet(monthDataSet, monthMinDataSet, monthMaxDataSet, "Month");
+	private void writeOnlineMonthData() {
+		writeOnlineDataSet(monthDataSet, monthMinDataSet, monthMaxDataSet, "Month");
 	}
 
-	private void putOnlineYearData() {
-		putOnlineDataSet(yearDataSet, yearMinDataSet, yearMaxDataSet, "Year");		
+	private void writeOnlineYearData() {
+		writeOnlineDataSet(yearDataSet, yearMinDataSet, yearMaxDataSet, "Year");		
 	}
 
 	private class AveragingTask extends TimerTask{
@@ -490,22 +465,6 @@ public class DataChannel {
 
 	}
 
-	public class AveragedDataPoint {
-		public long time;
-		public double value;
-		public double min;
-		public double max;
-
-		public AveragedDataPoint() {
-		}
-		public AveragedDataPoint(long time, double value, double min, double max) {
-			this.time = time;
-			this.value = value;
-			this.max = max;
-			this.min = min;
-		}
-	}
-
 	private class FileLoader extends Thread {
 		private Path logFilePath;
 		
@@ -517,10 +476,9 @@ public class DataChannel {
 		public void run() {
 			DataChannel.this.setRecording(false);
 			DataChannel.this.isFileLoading.set(true);
-			BufferedReader logFileReader = null;
 
 			try {
-				logFileReader = Files.newBufferedReader(this.logFilePath, Charset.defaultCharset());
+				BufferedReader logFileReader = Files.newBufferedReader(this.logFilePath, Charset.defaultCharset());
 				String line;
 				String[] elements;
 				long time = 0;
@@ -542,10 +500,12 @@ public class DataChannel {
 				logFileReader = null;
 				line = null;
 				elements = null;
-				System.out.print(channelName+" Loaded.");
+				System.out.println(channelName+" Loaded.");
 				
-			} catch (NumberFormatException | IOException e) {
-				System.out.println(channelName+" not exists or corrupted");
+			} catch (NumberFormatException e) {
+				System.out.println(channelName+" seems corrupted");
+			} catch (IOException e) {
+				System.out.println(channelName+" not yet created");
 			}
 
 			DataChannel.this.isFileLoading.set(false);

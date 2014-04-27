@@ -2,7 +2,6 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
-	<classpathentry kind="lib" path="lib/jdataviewer.jar"/>
 	<classpathentry kind="lib" path="lib/commons-net-3.3.jar"/>
 	<classpathentry kind="lib" path="lib/pi4j-core.jar" sourcepath="lib/pi4j-device-sources.jar">
 		<attributes>
@@ -29,5 +28,6 @@
 			<attribute name="javadoc_location" value="jar:platform:/resource/pilogger_on_pi/lib/pi4j-service-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="lib/jdataviewer_1.6.5.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

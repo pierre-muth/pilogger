@@ -28,6 +28,7 @@ import cern.jdve.scale.TimeStepsDefinition;
 
 public class PiloggerGUI extends JPanel {
 	public static Font labelFont = new Font("Dialog", Font.PLAIN, 9);
+	public static final String DATE_PATERN = "yyyy.MM.dd HH:mm:ss";
 	private Color line0ChartColor = new Color(255, 255, 255, 255);
 	private Color line1ChartColor = new Color(128, 128, 128, 255);
 	private Color areaChartColor = new Color(55, 55, 55, 100);
@@ -49,7 +50,7 @@ public class PiloggerGUI extends JPanel {
 		setLayout(getCardLayout());
 		add(getChartCard(), CARD_CHART);
 		add(getConfCard(), CARD_CONF);
-		setPreferredSize(new Dimension(240, 160));
+		setPreferredSize(new Dimension(320, 240));
 	}
 	
 	private CardLayout cardLayout;
@@ -97,10 +98,22 @@ public class PiloggerGUI extends JPanel {
 	private JPanel probeCustomPanel;
 	protected JPanel getProbeCustomPanel() {
 		if (probeCustomPanel == null) {
-			probeCustomPanel = new JPanel();
+			probeCustomPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 			probeCustomPanel.setBackground(Color.black);
+			probeCustomPanel.setBorder(getCustomPanelBorder());
 		}
 		return probeCustomPanel;
+	}
+	
+	private TitledBorder customPanelBorder;
+	private TitledBorder getCustomPanelBorder() {
+		if (customPanelBorder == null) {
+			customPanelBorder = new TitledBorder("Probes utilities");
+			customPanelBorder.setTitleColor(Color.white);
+			customPanelBorder.setTitleFont(PiloggerGUI.labelFont);
+			customPanelBorder.setBorder(new LineBorder(Color.gray));
+		}
+		return customPanelBorder;
 	}
 	
 	private JPanel channelReloadPanel;
@@ -131,7 +144,7 @@ public class PiloggerGUI extends JPanel {
 			confBackButton.setBorder(new LineBorder(Color.gray));
 			confBackButton.setBackground(Color.black);
 			confBackButton.setForeground(Color.white);
-			confBackButton.setPreferredSize(new Dimension(30, 11));
+			confBackButton.setPreferredSize(new Dimension(30, 12));
 			confBackButton.setFont(PiloggerGUI.labelFont);
 			confBackButton.addActionListener(new ActionListener() {
 				@Override
