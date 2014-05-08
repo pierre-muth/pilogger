@@ -6,8 +6,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -15,21 +13,14 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.sql.Time;
-import java.text.DateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JComponent;
-import javax.swing.JPanel;
-import javax.swing.JRadioButton;
 import javax.swing.SwingUtilities;
-import javax.swing.border.EtchedBorder;
 import javax.swing.border.LineBorder;
 
 import cern.jdve.data.DataSet;
@@ -48,12 +39,12 @@ public class DataChannel {
 
 	private String logFileName = "";
 
-	private static final int CHART_BUFFER_LENGTH = 600;
+	private static final int CHART_BUFFER_LENGTH = 400;
 
 	private static final int MS_TO_HOUR_POINT = 15000;
-	private static final int HOUR_POINTS_TO_DAY_POINT = 10;
-	private static final int DAY_POINTS_TO_MONTH_POINT = 18;
-	private static final int MONTH_POINTS_TO_YEAR_POINT = 6;
+	private static final int HOUR_POINTS_TO_DAY_POINT = 15;
+	private static final int DAY_POINTS_TO_MONTH_POINT = 30;
+	private static final int MONTH_POINTS_TO_YEAR_POINT = 12;
 
 	public ShiftingDataSet realTimeDataSet;
 	public ShiftingDataSet hourDataSet;

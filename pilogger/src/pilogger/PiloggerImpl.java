@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import javax.swing.JPanel;
 
-import probes.BMP085probe;
+import probes.I2Cprobe;
 import probes.GeigerProbe;
 import probes.SystemProbe;
 import probes.WirelessProbe;
@@ -22,7 +22,7 @@ import com.pi4j.io.serial.SerialPortException;
 import com.pi4j.wiringpi.Spi;
 
 public class PiloggerImpl {
-	private BMP085probe bmp085Probe;
+	private I2Cprobe bmp085Probe;
     private GeigerProbe geigerCounter;
     private SystemProbe systemProbe;
     private WirelessProbe wirelessProbe;
@@ -61,7 +61,7 @@ public class PiloggerImpl {
 	private void initI2CandBMP085probe() {
     	try {
 			final I2CBus bus = I2CFactory.getInstance(I2CBus.BUS_1);
-			bmp085Probe = new BMP085probe(bus);
+			bmp085Probe = new I2Cprobe(bus);
 			probeManager.addProbe(bmp085Probe);
 		} catch (IOException e) {
 			e.printStackTrace();

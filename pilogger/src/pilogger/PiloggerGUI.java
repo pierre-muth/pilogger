@@ -77,7 +77,7 @@ public class PiloggerGUI extends JPanel {
 	private JPanel ledPanel;
 	protected JPanel getLedPanel() {
 		if (ledPanel == null) {
-			ledPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
+			ledPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 0));
 			ledPanel.setBackground(Color.black);
 		}
 		return ledPanel;

@@ -4,12 +4,8 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.File;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Timer;
-import java.util.TimerTask;
 
 import javax.swing.JMenuItem;
 import javax.swing.SwingUtilities;
@@ -18,7 +14,7 @@ import probes.AbstractProbe;
 
 public class ProbeManager implements ActionListener {
 	public static final String onlineFileLocalDirectory = "/home/pi/projects/pilogger/logs/online/";
-	private static final int MS_TO_UPLOAD = 300000;  // 5min
+	private static final int MS_TO_UPLOAD = 600000;  // 10min
 	private PiloggerGUI gui;
 	private HashMap<JMenuItem, DataChannel> scale0channelMap = new HashMap<>();
 	private HashMap<JMenuItem, DataChannel> scale1channelMap = new HashMap<>();
@@ -52,8 +48,8 @@ public class ProbeManager implements ActionListener {
 			item1.setBackground(Color.black);
 			item0.setForeground(Color.white);
 			item1.setForeground(Color.white);			
-			item0.setPreferredSize(new Dimension(150, 11));
-			item1.setPreferredSize(new Dimension(150, 11));
+			item0.setPreferredSize(new Dimension(150, 10));
+			item1.setPreferredSize(new Dimension(150, 10));
 			item0.setFont(PiloggerGUI.labelFont);
 			item1.setFont(PiloggerGUI.labelFont);
 			item0.addActionListener(this);

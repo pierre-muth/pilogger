@@ -1,6 +1,8 @@
 package probes;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import javax.swing.JComponent;
 
@@ -10,8 +12,9 @@ import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CDevice;
 
 
-public class BMP085probe extends AbstractProbe{
+public class I2Cprobe extends AbstractProbe{
 	public static final int BMP085_I2C_ADDR   = 0x77;
+	public static final int HMC5983_I2C_ADDR  = 0x1E;
 	
 // Operating Mode (internal oversampling)
 	public static final int OSS     = 3;
@@ -33,6 +36,23 @@ public class BMP085probe extends AbstractProbe{
 	public static final byte READTEMPCMD      = 0x2E;
 	public static final int READPRESSURECMD   = 0xF4;
 	
+	// HMC5983 Registers
+	public static final int CONFIG_A           = 0x00; // R/W
+	public static final int CONFIG_B           = 0x01; // R/W
+	public static final int MODE	           = 0x02; // R/W
+	public static final int DATA_X_H	       = 0x03; // R
+	public static final int DATA_X_L	       = 0x04; // R
+	public static final int DATA_Y_H	       = 0x05; // R
+	public static final int DATA_Y_L	       = 0x06; // R
+	public static final int DATA_Z_H	       = 0x07; // R
+	public static final int DATA_Z_L	       = 0x08; // R
+	public static final int STATUS		       = 0x09; // R
+	public static final int ID_A		       = 0x0A; // R
+	public static final int ID_B		       = 0x0B; // R
+	public static final int ID_C		       = 0x0C; // R
+	public static final int TEMP_H		       = 0x31; // R
+	public static final int TEMP_L		       = 0x32; // R
+	
 	private I2CDevice bmp085device;
 	private int cal_AC1 = 0;
 	private int cal_AC2 = 0;
@@ -46,24 +66,32 @@ public class BMP085probe extends AbstractProbe{
 	private int cal_MC = 0;
 	private int cal_MD = 0;
 	
+	private I2CDevice hmc5983device;
+	
 	private DataChannel pressureChannel = new DataChannel("Atmospheric Pressure", "Atmospheric_Pressure");
 	private DataChannel temperatureChannel = new DataChannel("Room Temperature", "Room_Temperature");
+	private DataChannel magXChannel = new DataChannel("Magnetic X", "Magnetic_X");
+	private DataChannel magYChannel = new DataChannel("Magnetic Y", "Magnetic_Y");
+	private DataChannel magZChannel = new DataChannel("Magnetic Z", "Magnetic_Z");
+	private DataChannel magSumChannel = new DataChannel("Magnetic sum", "Magnetic_sum");
 	
 	/**
 	 * BMP085 Pressure and Temperature probe on I2C bus
 	 * @param bus Pi4J I2CBus object
 	 * @throws IOException
 	 */
-	public BMP085probe(I2CBus bus) throws IOException {
+	public I2Cprobe(I2CBus bus) throws IOException {
 		bmp085device = bus.getDevice(BMP085_I2C_ADDR);
 		readCalibrationData();
+		hmc5983device = bus.getDevice(HMC5983_I2C_ADDR);
+		
 		DataReaderThread dataReaderThread = new DataReaderThread();
 		dataReaderThread.start();
 	}
 	
 	@Override
 	public DataChannel[] getChannels() {
-		return new DataChannel[]{pressureChannel, temperatureChannel};
+		return new DataChannel[]{pressureChannel, temperatureChannel, magXChannel, magYChannel, magZChannel, magSumChannel};
 	}
 	
 	public void readCalibrationData() throws IOException {
@@ -131,6 +159,7 @@ public class BMP085probe extends AbstractProbe{
 		public static final int OVER_SAMPLING = 5;
 		private double temperatureSum;
 		private double pressureSum;
+		private double magX, magY, magZ, magSum;
 		private int dataCount;
 		
 		public DataReaderThread() {
@@ -141,6 +170,10 @@ public class BMP085probe extends AbstractProbe{
 			int rawTemperature;
 			int msb, lsb, xlsb;
 			int rawPressure;
+			int[] buffer;
+			double rawMagX, rawMagY, rawMagZ;
+			ByteBuffer bb;
+			
 			try {
 				while (true) {
 					bmp085device.write(CONTROL, READTEMPCMD);
@@ -158,23 +191,54 @@ public class BMP085probe extends AbstractProbe{
 					
 					temperatureSum += data.temperature;
 					pressureSum += data.pressure;
-					dataCount++;
 					
+					hmc5983device.write(CONFIG_A, (byte)0b11110000 );
+					hmc5983device.write(CONFIG_B, (byte)0b00000000 );
+					hmc5983device.write(MODE	, (byte)0b00000000 );
+					
+					sleep(200); 
+					
+					buffer = new int[6];
+					for (int i = 0; i < buffer.length; i++) {
+						buffer[i] = hmc5983device.read(i+3);
+					}
+					
+					bb = ByteBuffer.allocate(6);
+					bb.order(ByteOrder.BIG_ENDIAN);
+					for (int i = 0; i < 6; i++) {
+						bb.put((byte) (buffer[i] & 0xFF));
+					}			
+					
+					rawMagX = (bb.getShort(0)*0.00073)*100;
+					magX += rawMagX;
+					rawMagY = (bb.getShort(2)*0.00073)*100;					
+					magY += rawMagY;
+					rawMagZ = (bb.getShort(4)*0.00073)*100;	
+					magZ += rawMagZ;
+					
+					magSum += Math.sqrt(rawMagX*rawMagX + rawMagY*rawMagY + rawMagZ*rawMagZ);
+					
+					dataCount++;
 					if (dataCount >= OVER_SAMPLING) {
 						pressureChannel.newData(pressureSum/OVER_SAMPLING);
 						temperatureChannel.newData(temperatureSum/OVER_SAMPLING);
+						magXChannel.newData(magX/OVER_SAMPLING);
+						magYChannel.newData(magY/OVER_SAMPLING);
+						magZChannel.newData(magZ/OVER_SAMPLING);
+						magSumChannel.newData(magSum/OVER_SAMPLING);
+						
 						temperatureSum = 0;
 						pressureSum = 0;
+						magX = 0; magY = 0; magZ = 0; magSum = 0;
 						dataCount = 0;
 					}
-					
-					sleep(200); 
 				}
 				
 			} catch (IOException | InterruptedException e) {
 				e.printStackTrace();
 			}
 		}
+		
 	}
 	
 	private class BMP085data {

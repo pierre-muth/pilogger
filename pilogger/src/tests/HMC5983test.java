@@ -35,45 +35,47 @@ public class HMC5983test {
 		final I2CBus bus = I2CFactory.getInstance(I2CBus.BUS_1);
 		hmc5983device = bus.getDevice(HMC5983_I2C_ADDR);
 
-		
-		
-		for (int i = 0; i < 13; i++) {
-			System.out.print(byteToHex( (byte) hmc5983device.read(i) ) +" ");
-		}
-		System.out.print("\n");
+//		hmc5983device.write(CONFIG_A, (byte)0b11110000 );
+//		hmc5983device.write(CONFIG_B, (byte)0b11100000 );
+//		hmc5983device.write(MODE	, (byte)0b00000000 );
 
-		hmc5983device.write(CONFIG_A, (byte)0b11110000 );
-		hmc5983device.write(CONFIG_B, (byte)0b00100000 );
-		hmc5983device.write(MODE	, (byte)0b00000001 );
-
-		for (int i = 0; i < 13; i++) {
-			System.out.print(byteToHex( (byte) hmc5983device.read(i) ) +" ");
-		}
-		System.out.print("\n");
 		
 		while (true) {
 			
-			ByteBuffer bb = ByteBuffer.allocate(6);
-			bb.order(ByteOrder.LITTLE_ENDIAN);
-			for (int i = 3; i < 9; i++) {
-				bb.put((byte) hmc5983device.read(i));
-			}			
-			short xval = bb.getShort(0);
-			short yval = bb.getShort(1);
-			short zval = bb.getShort(2);
-			
-			System.out.println("X:"+xval+" Y:"+yval+" Z:"+zval);
+			hmc5983device.write(CONFIG_A, (byte)0b11110000 );
+			hmc5983device.write(CONFIG_B, (byte)0b00000000 );
+			hmc5983device.write(MODE	, (byte)0b00000000 );
 			
 			try {
-				Thread.sleep(2000);
+				Thread.sleep(200);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
 			
+			byte[] buf = new byte[6];
+			hmc5983device.read(buf, 0, 6);
 			
-			hmc5983device.write(MODE	, (byte)0b00000001 );
+			int[] buffer = new int[6];
+			for (int i = 0; i < buffer.length; i++) {
+				buffer[i] = hmc5983device.read(i+3);
+			} 
 			
-
+			ByteBuffer bb = ByteBuffer.allocate(6);
+			bb.order(ByteOrder.BIG_ENDIAN);
+			for (int i = 0; i < 6; i++) {
+				bb.put((byte) (buffer[i] & 0xFF));
+				System.out.print(byteToHex(buf[i])+" ");
+			}			
+			
+			short xval = bb.getShort(0);
+			short yval = bb.getShort(2);
+			short zval = bb.getShort(4);
+			
+			System.out.println("   -- X:"+xval+" Y:"+yval+" Z:"+zval);
+			
+//			for (int i = 0; i < 13; i++) {
+//				System.out.print(byteToHex( (byte) hmc5983device.read(i) ) +" ");
+//			}
 		}        
 
 	}

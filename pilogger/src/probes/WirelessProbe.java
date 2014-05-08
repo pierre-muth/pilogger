@@ -1,7 +1,6 @@
 package probes;
 
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.nio.ByteBuffer;
@@ -333,7 +332,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 				byte checksum = (byte) (redPayload[13] + redPayload[14] +redPayload[15] +redPayload[16]);
 			    
 			    if (checksum != redPayload[17]) {
-			    	System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+" DHT checksum fail");
+			    	System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+": DHT checksum fail");
 			    	return;
 			    }
 			    
