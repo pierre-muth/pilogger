@@ -15,30 +15,30 @@ public class SystemProbe extends AbstractProbe {
 	private DataChannel cpuTempChannel = new DataChannel("CPU temperature", "CPU_temp");
 	private DataChannel loadChannel = new DataChannel("System Load", "System_Load");
 	private DataChannel[] channels = new DataChannel[]{memoryChannel, loadChannel, cpuTempChannel};
-	
+
 	public SystemProbe() {
 		SystemInfoReaderThread systemInfoReaderThread = new SystemInfoReaderThread();
 		systemInfoReaderThread.start();
 	}
-	
+
 	@Override
 	public DataChannel[] getChannels() {
 		return channels;
 	}
-	
+
 	private class SystemInfoReaderThread extends Thread {
 		@Override
 		public void run() {
-			try {
-				while (true) {
+			while (true) {
+				try {
 					memoryChannel.newData( SystemInfo.getMemoryUsed() );
 					cpuTempChannel.newData( SystemInfo.getCpuTemperature() );
 					loadChannel.newData( ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage() );
-					sleep(2500);
-				}
-			} catch (InterruptedException | NumberFormatException | IOException e) {
-				e.printStackTrace();
-			} 
+					sleep(5000);
+				} catch (Exception e) {
+					e.printStackTrace();
+				} 
+			}
 		}
 	}
 

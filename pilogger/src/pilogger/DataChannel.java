@@ -171,7 +171,7 @@ public class DataChannel {
 			blinkButton = new JButton();
 			blinkButton.setBorder(new LineBorder(Color.gray));
 			blinkButton.setBackground(Color.black);
-			blinkButton.setPreferredSize(new Dimension(8, 8));
+			blinkButton.setPreferredSize(new Dimension(8, 6));
 			blinkButton.setToolTipText(channelName);
 			blinkButton.addActionListener(new ActionListener() {
 				@Override

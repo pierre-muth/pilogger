@@ -34,7 +34,7 @@ public class ProbeManager implements ActionListener {
 		initTimeScaleMenu();
 		
 		Timer t = new Timer();
-		t.schedule(new UploadFTP(), MS_TO_UPLOAD/5, MS_TO_UPLOAD);
+		t.schedule(new UploadFTP(), MS_TO_UPLOAD, MS_TO_UPLOAD);
 	}
 	
 	public void addProbe(final AbstractProbe probe) {

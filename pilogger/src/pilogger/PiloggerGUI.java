@@ -31,10 +31,10 @@ public class PiloggerGUI extends JPanel {
 	public static final String DATE_PATERN = "yyyy.MM.dd HH:mm:ss";
 	private Color line0ChartColor = new Color(255, 255, 255, 255);
 	private Color line1ChartColor = new Color(128, 128, 128, 255);
-	private Color areaChartColor = new Color(55, 55, 55, 100);
+	private Color areaChartColor  = new Color(55, 55, 55, 100);
 	private Style line0Style = new Style(new BasicStroke(1.0f), line0ChartColor, line0ChartColor);
 	private Style line1Style = new Style(new BasicStroke(1.0f), line1ChartColor, line1ChartColor);
-	private Style areaStyle = new Style(new BasicStroke(0.0f), areaChartColor, areaChartColor);
+	private Style areaStyle  = new Style(new BasicStroke(0.0f), areaChartColor, areaChartColor);
 	private EmptyBorder emptyBorder = new EmptyBorder(0, 0, 0, 0);
 	private LineBorder greyBorder = new LineBorder(Color.gray, 1);
 	private static final String CARD_CHART = "Chart";
