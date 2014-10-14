@@ -27,7 +27,6 @@ public class PiloggerImpl {
     private SystemProbe systemProbe;
     private WirelessProbe wirelessProbe;
     private ProbeManager probeManager;
-    private PiloggerGUI gui;
     
     /**
      * Implementation of the Pilogger application GUI

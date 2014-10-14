@@ -63,17 +63,17 @@ public class DataChannel {
 	private AveragingTask averagingTask;
 
 	private double daySum = 0; 
-	private long dayTimeSum = 0;
+	private double dayTimeSum = 0;
 	private double dayMin = Double.POSITIVE_INFINITY, dayMax = Double.NEGATIVE_INFINITY;
 	private int dayCount = 0;
 
 	private double monthSum = 0; 
-	private long monthTimeSum = 0;
+	private double monthTimeSum = 0;
 	private double monthMin = Double.POSITIVE_INFINITY, monthMax = Double.NEGATIVE_INFINITY;
 	private int monthCount = 0;
 
 	private double yearSum = 0;
-	private long yearTimeSum = 0;
+	private double yearTimeSum = 0;
 	private double yearMin = Double.POSITIVE_INFINITY, yearMax = Double.NEGATIVE_INFINITY;
 	private int yearCount = 0;
 
@@ -241,7 +241,7 @@ public class DataChannel {
 		if (averagedDataPoint.max > dayMax) dayMax = averagedDataPoint.max;
 		dayCount++;
 		if (dayCount > HOUR_POINTS_TO_DAY_POINT) {
-			long averageTime = dayTimeSum/dayCount;
+			long averageTime = (long) (dayTimeSum/dayCount);
 			double averageValue = daySum/dayCount;
 
 			dayDataSet.add(averageTime, averageValue);
@@ -273,7 +273,7 @@ public class DataChannel {
 		if (averagedDataPoint.max > monthMax) monthMax = averagedDataPoint.max;
 		monthCount++;
 		if (monthCount > DAY_POINTS_TO_MONTH_POINT) {
-			long averageTime = monthTimeSum/monthCount;
+			long averageTime = (long) (monthTimeSum/monthCount);
 			double averageValue = monthSum/monthCount;
 
 			monthDataSet.add(averageTime, averageValue);
@@ -303,7 +303,7 @@ public class DataChannel {
 		if (averagedDataPoint.max > yearMax) yearMax = averagedDataPoint.max;
 		yearCount++;
 		if (yearCount > MONTH_POINTS_TO_YEAR_POINT) {
-			long averageTime = yearTimeSum/yearCount;
+			long averageTime = (long) (yearTimeSum/yearCount);
 			double averageValue = yearSum/yearCount;
 
 			yearDataSet.add(averageTime, averageValue);
@@ -419,6 +419,7 @@ public class DataChannel {
 
 	private class AveragingTask extends TimerTask{
 		private double sum;
+		private double lastAverage;
 		private double min, max;
 		private long timeSum, count;
 
@@ -428,10 +429,17 @@ public class DataChannel {
 
 		@Override
 		public void run() {
+			if (!isRecording.get() || isFileLoading.get()) return;
+			
 			if (count > 0) {
 				long time = timeSum/count;
 				double av = sum/count;
 				AveragedDataPoint averagedDataPoint = new AveragedDataPoint(time, av, min, max);
+				DataChannel.this.processAveragedData(averagedDataPoint, false);
+				lastAverage = av;
+			} else {
+				timeSum = System.currentTimeMillis();
+				AveragedDataPoint averagedDataPoint = new AveragedDataPoint(timeSum, lastAverage, lastAverage, lastAverage);
 				DataChannel.this.processAveragedData(averagedDataPoint, false);
 			}
 
@@ -472,19 +480,27 @@ public class DataChannel {
 				BufferedReader logFileReader = Files.newBufferedReader(this.logFilePath, Charset.defaultCharset());
 				String line;
 				String[] elements;
-				long time = 0;
+				double time = 0;
 				double value = Double.NaN, min = Double.NaN, max = Double.NaN;
 
 				while ((line = logFileReader.readLine()) != null) {
 					elements = line.split(", ");
-					if (elements.length > 0) time = (long) Double.parseDouble(elements[0]);
-					if (elements.length > 1) value = Double.parseDouble(elements[1]);
-					if (elements.length > 2) max = Double.parseDouble(elements[2]);
-					if (elements.length > 3) min = Double.parseDouble(elements[3]);
+					if (elements.length == 4) {
+						try {
+							time = Double.parseDouble(elements[0]);
+							value = Double.parseDouble(elements[1]);
+							max = Double.parseDouble(elements[2]);
+							min = Double.parseDouble(elements[3]);
 
-					AveragedDataPoint averagedDataPoint = new AveragedDataPoint(time, value, min, max);
-					processAveragedData(averagedDataPoint, true);
-					//sleep(1); // to not overload the system
+							AveragedDataPoint averagedDataPoint = new AveragedDataPoint((long) time, value, min, max);
+							processAveragedData(averagedDataPoint, true);
+
+						} catch (NumberFormatException e) {
+							System.out.println(channelName+" corrupted point");
+						}
+					}
+
+//					sleep(50); // to not overload the system
 				}
 
 				logFileReader.close();
@@ -492,9 +508,7 @@ public class DataChannel {
 				line = null;
 				elements = null;
 				System.out.println(channelName+" Loaded.");
-				
-			} catch (NumberFormatException e) {
-				System.out.println(channelName+" seems corrupted");
+
 			} catch (IOException e) {
 				System.out.println(channelName+" not yet created");
 			}

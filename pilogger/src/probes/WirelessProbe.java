@@ -35,23 +35,22 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 	public DataChannel heatingInflowChannel = new DataChannel("Heating Inflow", "Heating_Inflow");
 	public DataChannel heatingReturnChannel = new DataChannel("Heating Return", "Heating_Return");
 	public DataChannel cellarTemperatureChannel = new DataChannel("Cellar Temperature", "Cellar_temperature");
-	public DataChannel seismoChannel = new DataChannel("Seismometer", "Seismometer");
-	public DataChannel seismoDifferentialChannel = new DataChannel("Seismometer Diff", "Seismometer_Diff", true);
 	public DataChannel humidChannel = new DataChannel("Relative Humidity", "Rel_Humidity");
 	public DataChannel outTemperature2Channel = new DataChannel("Outside Temperature 2", "Outside_Temperature2");
+	public DataChannel powerConsumptionChannel = new DataChannel("inst. power consumption", "inst_power_cons");
 	
 	private DataChannel[] channels = new DataChannel[] {
 			outTemperatureChannel, 
+			outTemperature2Channel,
+			humidChannel,
 			outLightChannel, 
 			outBatteryChannel, 
 			heatingExhaustChannel, 
 			heatingInflowChannel, 
 			heatingReturnChannel, 
 			cellarTemperatureChannel,
-			seismoChannel,
-			seismoDifferentialChannel,
-			humidChannel,
-			outTemperature2Channel};
+			powerConsumptionChannel
+			};
 
 	private GpioController gpio;
 	private GpioPinDigitalOutput CE;
@@ -173,25 +172,26 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 			processSolarProbe(redPayload);
 		} else if (redPayload[0] == 0x42) { // pipe 1 : cellar
 			processCellarTemp(redPayload);
-		} else if (redPayload[0] == 0x44) { // pipe 2 : seismo
-			processSeismo(redPayload);
+		} else if (redPayload[0] == 0x44) { // pipe 2 : Instant power
+			processPower(redPayload);
 		}
 
 	}
 
-	private void processSeismo(byte[] redPayload) {
-		if (redPayload[1] == 'P') {	
+	private void processPower(byte[] redPayload) {
+		if (redPayload[1] == 'W') {	
 			if (redPayload[2] == '2') {
 				byte HV = redPayload[3];
 				byte LV = redPayload[4];
 				ByteBuffer bb = ByteBuffer.allocate(2);
-				bb.order(ByteOrder.LITTLE_ENDIAN);
+				bb.order(ByteOrder.BIG_ENDIAN);
 				bb.put(LV);
 				bb.put(HV);
-				short shortVal = bb.getShort(0);
-				seismoChannel.newData(shortVal);
-				seismoDifferentialChannel.newData(shortVal);
-
+				short watt = bb.getShort(0);
+				//System.out.println("debug > WirelessProbe - watt = "+watt);
+				if (watt > 2 && watt < 5000) {
+					powerConsumptionChannel.newData(watt);
+				}
 			}
 		}
 	}
@@ -323,7 +323,9 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 				int i;
 				if (redPayload[10] < 0)	i = 256 + redPayload[10] ;
 				else i = redPayload[10];
-				outBatteryChannel.newData(i);
+				double v = i;
+				v = (v/256)*5;	// in Volt
+				outBatteryChannel.newData(v);
 			}
 		}
 		// DHT values
