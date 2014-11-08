@@ -45,6 +45,12 @@ public class DataChannel {
 	private static final int HOUR_POINTS_TO_DAY_POINT = 15;
 	private static final int DAY_POINTS_TO_MONTH_POINT = 30;
 	private static final int MONTH_POINTS_TO_YEAR_POINT = 12;
+	
+	public static final String REALTIME_SUFIX = "Realtime";
+	public static final String HOUR_SUFIX = "Hour";
+	public static final String DAY_SUFIX = "Day";
+	public static final String MONTH_SUFIX = "Month";
+	public static final String YEAR_SUFIX = "Year";
 
 	public ShiftingDataSet realTimeDataSet;
 	public ShiftingDataSet hourDataSet;
@@ -115,9 +121,9 @@ public class DataChannel {
 
 
 		Path piloggerDir = Paths.get(logFileDirectory);
-		logFilePath = piloggerDir.resolve(logFileName+".csv");
+		logFilePath = piloggerDir.resolve(this.logFileName+".csv");
 
-		loadLogFile(logFilePath);
+		loadDataSetLogFile();
 
 		Timer t = new Timer();
 		averagingTask = new AveragingTask();
@@ -321,16 +327,28 @@ public class DataChannel {
 			yearCount = 0;
 		}
 	}
-
+	
 	private void loadLogFile(Path logFilePath) {
 		if (isFileLoading.get()) return;
 		
 		setRecording(false);
 		resetDataSets();
 		
-		FileLoader loader = new FileLoader(logFilePath);
+		LogFileLoader loader = new LogFileLoader(logFilePath);
 		loader.setPriority(Thread.MIN_PRIORITY);
 		loader.start();
+	}
+	
+	private void loadDataSetLogFile() {
+		if (isFileLoading.get()) return;
+		
+		setRecording(false);
+		resetDataSets();
+		
+		DataSetLogFileLoader loader = new DataSetLogFileLoader();
+		loader.setPriority(Thread.MIN_PRIORITY);
+		loader.start();
+		
 	}
 	
 	private void resetDataSets(){
@@ -368,7 +386,7 @@ public class DataChannel {
 		yearMaxDataSet.clear();
 		yearMinDataSet.clear();
 	}
-
+	
 	private void writeOnlineDataSet(DataSet dataset, DataSet minDataset, DataSet maxDataset, String timeScale) {
 		Path onlineFilePath = Paths.get(ProbeManager.onlineFileLocalDirectory).resolve(logFileName+timeScale+".csv");
 
@@ -396,30 +414,30 @@ public class DataChannel {
 			System.out.println(new Date().toString()+": Fail writing "+ timeScale +" "+channelName);
 		} 
 	}
-
+	
 	private void writeOnlineRealTimeData() {
-		writeOnlineDataSet(realTimeDataSet, null, null, "Realtime");		
+		writeOnlineDataSet(realTimeDataSet, null, null, REALTIME_SUFIX);		
 	}
 
 	private void writeOnlineHourData() {
-		writeOnlineDataSet(hourDataSet, hourMinDataSet, hourMaxDataSet, "Hour");		
+		writeOnlineDataSet(hourDataSet, hourMinDataSet, hourMaxDataSet, HOUR_SUFIX);		
 	}
 
 	private void writeOnlineDayData() {
-		writeOnlineDataSet(dayDataSet, dayMinDataSet, dayMaxDataSet, "Day");		
+		writeOnlineDataSet(dayDataSet, dayMinDataSet, dayMaxDataSet, DAY_SUFIX);		
 	}
 
 	private void writeOnlineMonthData() {
-		writeOnlineDataSet(monthDataSet, monthMinDataSet, monthMaxDataSet, "Month");
+		writeOnlineDataSet(monthDataSet, monthMinDataSet, monthMaxDataSet, MONTH_SUFIX);
 	}
 
 	private void writeOnlineYearData() {
-		writeOnlineDataSet(yearDataSet, yearMinDataSet, yearMaxDataSet, "Year");		
+		writeOnlineDataSet(yearDataSet, yearMinDataSet, yearMaxDataSet, YEAR_SUFIX);		
 	}
 
 	private class AveragingTask extends TimerTask{
 		private double sum;
-		private double lastAverage;
+		private double lastAverage = Double.NaN;
 		private double min, max;
 		private long timeSum, count;
 
@@ -437,7 +455,7 @@ public class DataChannel {
 				AveragedDataPoint averagedDataPoint = new AveragedDataPoint(time, av, min, max);
 				DataChannel.this.processAveragedData(averagedDataPoint, false);
 				lastAverage = av;
-			} else {
+			} else if (!Double.isNaN(lastAverage)){
 				timeSum = System.currentTimeMillis();
 				AveragedDataPoint averagedDataPoint = new AveragedDataPoint(timeSum, lastAverage, lastAverage, lastAverage);
 				DataChannel.this.processAveragedData(averagedDataPoint, false);
@@ -463,11 +481,92 @@ public class DataChannel {
 		}
 
 	}
+	
+	private class DataSetLogFileLoader extends Thread {
+		
+		@Override
+		public void run() {
+			DataChannel.this.setRecording(false);
+			DataChannel.this.isFileLoading.set(true);
+			
+			loadDataSetLogFile(DataChannel.this.realTimeDataSet,
+					null,
+					null, REALTIME_SUFIX);
+			
+			loadDataSetLogFile(DataChannel.this.hourDataSet,
+					DataChannel.this.hourMinDataSet,
+					DataChannel.this.hourMaxDataSet, HOUR_SUFIX);
+			
+			loadDataSetLogFile(DataChannel.this.dayDataSet,
+					DataChannel.this.dayMinDataSet,
+					DataChannel.this.dayMaxDataSet, DAY_SUFIX);
+			
+			loadDataSetLogFile(DataChannel.this.monthDataSet,
+					DataChannel.this.monthMinDataSet,
+					DataChannel.this.monthMaxDataSet, MONTH_SUFIX);
+			
+			loadDataSetLogFile(DataChannel.this.yearDataSet,
+					DataChannel.this.yearMinDataSet,
+					DataChannel.this.yearMaxDataSet, YEAR_SUFIX);
+			
+			
+			DataChannel.this.isFileLoading.set(false);
+			DataChannel.this.setRecording(true);
+		}
+		
+		private void loadDataSetLogFile(DataSet dataset, DataSet minDataset, DataSet maxDataset, String timeScale) {
+			Path datasetFilePath = Paths.get(ProbeManager.onlineFileLocalDirectory).resolve(logFileName+timeScale+".csv");
+			
+			try {
+				BufferedReader logFileReader = Files.newBufferedReader(datasetFilePath, Charset.defaultCharset());
+				String line;
+				String[] elements;
+				double time = 0;
+				double value = Double.NaN, min = Double.NaN, max = Double.NaN;
+				boolean realtimeData = timeScale.contains(REALTIME_SUFIX);
 
-	private class FileLoader extends Thread {
+				logFileReader.readLine(); //header
+				while ((line = logFileReader.readLine()) != null) {
+					elements = line.split(", ");
+					if (elements.length >= 2) {
+						try {
+							time = Double.parseDouble(elements[0]);
+							value = Double.parseDouble(elements[1]);
+							dataset.add(time, value);
+						} catch (NumberFormatException e) {
+							System.out.println(channelName+" "+timeScale+" corrupted point");
+						}
+					} 
+					if (elements.length == 4 && !realtimeData) {
+						try {
+							min = Double.parseDouble(elements[2]);
+							minDataset.add(time, min);
+							max = Double.parseDouble(elements[3]);
+							maxDataset.add(time, max);
+						} catch (NumberFormatException e) {
+							System.out.println(channelName+" "+timeScale+" corrupted point");
+						}
+					}
+				}
+
+				logFileReader.close();
+				logFileReader = null;
+				line = null;
+				elements = null;
+				System.out.println(channelName+" "+timeScale+" Loaded.");
+
+			} catch (IOException e) {
+				System.out.println(channelName+" not found");
+			}
+
+		}
+		
+	}
+
+	private class LogFileLoader extends Thread {
 		private Path logFilePath;
 		
-		public FileLoader(Path logFilePath) {
+		public LogFileLoader(Path logFilePath) {
 			this.logFilePath = logFilePath;
 		}
 		

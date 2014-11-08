@@ -11,6 +11,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.border.LineBorder;
 
@@ -179,7 +180,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 	}
 
 	private void processPower(byte[] redPayload) {
-		if (redPayload[1] == 'W') {	
+		if (redPayload[1] == 'W') {
 			if (redPayload[2] == '2') {
 				byte HV = redPayload[3];
 				byte LV = redPayload[4];
@@ -188,10 +189,35 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 				bb.put(LV);
 				bb.put(HV);
 				short watt = bb.getShort(0);
-				//System.out.println("debug > WirelessProbe - watt = "+watt);
+				
+				if (getDebugOutCheckBox().isSelected()) {
+					System.out.println("debug > WirelessProbe - watt = "+watt);
+				}
+				
 				if (watt > 2 && watt < 5000) {
 					powerConsumptionChannel.newData(watt);
 				}
+			}
+		}
+		
+		if (redPayload[5] == 'R') {
+			if (redPayload[6] == '4') {
+				byte r0 = redPayload[7];
+				byte r1 = redPayload[8];
+				byte r2 = redPayload[9];
+				byte r3 = redPayload[10];
+				ByteBuffer bb = ByteBuffer.allocate(4);
+				bb.order(ByteOrder.BIG_ENDIAN);
+				bb.put(r3);
+				bb.put(r2);
+				bb.put(r1);
+				bb.put(r0);
+				int time = bb.getInt(0);
+				
+				if (getDebugOutCheckBox().isSelected()) {
+					System.out.println("debug > WirelessProbe - time = "+time);
+				}
+				
 			}
 		}
 	}
@@ -366,7 +392,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 
 	@Override
 	public JComponent[] getGuiComponents() {
-		return new JComponent[] {getResetButton()};
+		return new JComponent[] {getResetButton(), getDebugOutCheckBox()};
 	}
 
 	private JButton resetButton;
@@ -387,6 +413,19 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 
 		return resetButton;
 	}
+	
+	private JCheckBox debugOutCheckBox;
+	private JCheckBox getDebugOutCheckBox() {
+		if (debugOutCheckBox == null) {
+			debugOutCheckBox = new JCheckBox("Debug Output", false);
+			debugOutCheckBox.setBorder(new LineBorder(Color.gray));
+			debugOutCheckBox.setBackground(Color.black);
+			debugOutCheckBox.setForeground(Color.white);
+			debugOutCheckBox.setFont(PiloggerGUI.labelFont);
+		}
+		return debugOutCheckBox;
+	}
+	
 	private class Watchdog extends TimerTask {
 		private long lastInterruptTime = 0;
 		
