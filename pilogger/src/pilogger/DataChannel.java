@@ -227,20 +227,21 @@ public class DataChannel {
 			averagingTask.addPoint(time, data);
 	}
 
-	private void processAveragedData(AveragedDataPoint averagedDataPoint, boolean fromFile) {
+	private void processAveragedData(AveragedDataPoint averagedDataPoint, boolean isFromFile, boolean isNewData) {
 		hourDataSet.add(averagedDataPoint.time, averagedDataPoint.value);
 		hourMaxDataSet.add(averagedDataPoint.time, averagedDataPoint.max);
 		hourMinDataSet.add(averagedDataPoint.time, averagedDataPoint.min);
 
-		processNewHourDataForDayDataSets(averagedDataPoint, fromFile);
-		if(!fromFile) {
+		processNewHourDataForDayDataSets(averagedDataPoint, isFromFile);
+		
+		if(!isFromFile && isNewData) {
 			if ( ! LogFile.store(logFilePath, averagedDataPoint) ) {
 				System.out.println("Problem with file "+logFileName+".csv");
 			}
 		}
 	}
 
-	private void processNewHourDataForDayDataSets(AveragedDataPoint averagedDataPoint, boolean fromFile) {
+	private void processNewHourDataForDayDataSets(AveragedDataPoint averagedDataPoint, boolean isFromFile) {
 		daySum += averagedDataPoint.value;
 		dayTimeSum += averagedDataPoint.time;
 		if (averagedDataPoint.min < dayMin) dayMin = averagedDataPoint.min;
@@ -255,9 +256,9 @@ public class DataChannel {
 			dayMaxDataSet.add(averageTime, dayMax);
 
 			averagedDataPoint = new AveragedDataPoint(averageTime, averageValue, dayMin, dayMax);
-			processNewDayData(averagedDataPoint, fromFile);
+			processNewDayData(averagedDataPoint, isFromFile);
 			
-			if (!fromFile) {
+			if (!isFromFile) {
 				writeOnlineRealTimeData();
 				writeOnlineHourData();
 				writeOnlineDayData();
@@ -272,7 +273,7 @@ public class DataChannel {
 		}
 	}
 
-	private void processNewDayData(AveragedDataPoint averagedDataPoint, boolean fromFile) {
+	private void processNewDayData(AveragedDataPoint averagedDataPoint, boolean isFromFile) {
 		monthSum += averagedDataPoint.value;
 		monthTimeSum += averagedDataPoint.time;
 		if (averagedDataPoint.min < monthMin) monthMin = averagedDataPoint.min;
@@ -287,9 +288,9 @@ public class DataChannel {
 			monthMaxDataSet.add(averageTime, monthMax);
 
 			averagedDataPoint = new AveragedDataPoint(averageTime, averageValue, monthMin, monthMax);
-			processNewMonthData(averagedDataPoint, fromFile);
+			processNewMonthData(averagedDataPoint, isFromFile);
 
-			if (!fromFile) {
+			if (!isFromFile) {
 				writeOnlineMonthData();
 			}
 			
@@ -302,7 +303,7 @@ public class DataChannel {
 		}
 	}
 
-	private void processNewMonthData(AveragedDataPoint averagedDataPoint, boolean fromFile) {
+	private void processNewMonthData(AveragedDataPoint averagedDataPoint, boolean isFromFile) {
 		yearSum += averagedDataPoint.value;
 		yearTimeSum += averagedDataPoint.time;
 		if (averagedDataPoint.min < yearMin) yearMin = averagedDataPoint.min;
@@ -316,7 +317,7 @@ public class DataChannel {
 			yearMinDataSet.add(averageTime, yearMin);
 			yearMaxDataSet.add(averageTime, yearMax);
 			
-			if (!fromFile) {
+			if (!isFromFile) {
 				writeOnlineYearData();
 			}
 
@@ -453,12 +454,12 @@ public class DataChannel {
 				long time = timeSum/count;
 				double av = sum/count;
 				AveragedDataPoint averagedDataPoint = new AveragedDataPoint(time, av, min, max);
-				DataChannel.this.processAveragedData(averagedDataPoint, false);
+				DataChannel.this.processAveragedData(averagedDataPoint, false, true);
 				lastAverage = av;
 			} else if (!Double.isNaN(lastAverage)){
 				timeSum = System.currentTimeMillis();
 				AveragedDataPoint averagedDataPoint = new AveragedDataPoint(timeSum, lastAverage, lastAverage, lastAverage);
-				DataChannel.this.processAveragedData(averagedDataPoint, false);
+				DataChannel.this.processAveragedData(averagedDataPoint, false, false);
 			}
 
 			initVariables();
@@ -592,7 +593,7 @@ public class DataChannel {
 							min = Double.parseDouble(elements[3]);
 
 							AveragedDataPoint averagedDataPoint = new AveragedDataPoint((long) time, value, min, max);
-							processAveragedData(averagedDataPoint, true);
+							processAveragedData(averagedDataPoint, true, false);
 
 						} catch (NumberFormatException e) {
 							System.out.println(channelName+" corrupted point");
