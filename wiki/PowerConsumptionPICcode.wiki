@@ -1,7 +1,7 @@
 #summary Power consumption PIC code
 #labels pilogger,PIC,microcontroller,microchip,raspberrypi
 
-Here the C code running on the PIC of the power consumption probe.
+Here the C code running on the PIC 16F690 of the power consumption probe.
 Hi-Tech C compiler + mplab
 
 {{{
