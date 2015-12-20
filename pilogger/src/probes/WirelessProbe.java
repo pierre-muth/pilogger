@@ -17,6 +17,7 @@ import javax.swing.border.LineBorder;
 
 import pilogger.DataChannel;
 import pilogger.PiloggerGUI;
+import pilogger.Utils;
 
 import com.pi4j.io.gpio.GpioController;
 import com.pi4j.io.gpio.GpioPinDigitalInput;
@@ -28,29 +29,35 @@ import com.pi4j.io.gpio.event.GpioPinListenerDigital;
 import com.pi4j.wiringpi.Spi;
 
 public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigital{
+	private static final double MIN_TEMPERATURE = -39, MAX_TEMPERATURE = 65;
+	private static final double MIN_WATT = 2, MAX_WATT = 6000;
+	private static final double MIN_BATTERY = 1, MAX_BATTERY = 4;
+	private static final double MIN_LIGHT = 1, MAX_LIGHT = 1023;
 
 	public DataChannel outTemperatureChannel = new DataChannel("Outside Temperature", "Outside_Temperature");
 	public DataChannel outLightChannel = new DataChannel("Outside Brightness", "Outside_Light");
 	public DataChannel outBatteryChannel = new DataChannel("Outside Battery", "Outside_Battery");
 	public DataChannel heatingExhaustChannel = new DataChannel("Heating Exhaust", "Heating_Exhaust");
-	public DataChannel heatingInflowChannel = new DataChannel("Heating Inflow", "Heating_Inflow");
+	public DataChannel hotWaterOutChannel = new DataChannel("Hot water out", "Hot_Water_Out");
+	public DataChannel coldWaterInChannel = new DataChannel("Cold water in", "Cold_Water_In");
 	public DataChannel heatingReturnChannel = new DataChannel("Heating Return", "Heating_Return");
 	public DataChannel cellarTemperatureChannel = new DataChannel("Cellar Temperature", "Cellar_temperature");
-	public DataChannel humidChannel = new DataChannel("Relative Humidity", "Rel_Humidity");
-	public DataChannel outTemperature2Channel = new DataChannel("Outside Temperature 2", "Outside_Temperature2");
 	public DataChannel powerConsumptionChannel = new DataChannel("inst. power consumption", "inst_power_cons");
+	public DataChannel upstairsTemperatureChannel = new DataChannel("Upstairs Temperature", "Upstairs_Temperature");
+	public DataChannel upstairsBatteryChannel = new DataChannel("Upstairs Battery", "Upstairs_Battery");
 	
 	private DataChannel[] channels = new DataChannel[] {
 			outTemperatureChannel, 
-			outTemperature2Channel,
-			humidChannel,
 			outLightChannel, 
 			outBatteryChannel, 
 			heatingExhaustChannel, 
-			heatingInflowChannel, 
+			hotWaterOutChannel, 
+			coldWaterInChannel,
 			heatingReturnChannel, 
 			cellarTemperatureChannel,
-			powerConsumptionChannel
+			powerConsumptionChannel,
+			upstairsTemperatureChannel,
+			upstairsBatteryChannel
 			};
 
 	private GpioController gpio;
@@ -60,6 +67,8 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 	private static final int WATCHDOG_DELAY = 20000;
 	
 	public WirelessProbe(GpioController gpio) {
+		initDataChannels();
+		
 		this.gpio = gpio;
 		initGPIO();
 		initNRF24L01();
@@ -75,6 +84,20 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 		return channels;
 	}
 
+	private void initDataChannels() {
+		outTemperatureChannel.setDataRange(-20.0, 50.0);
+		outLightChannel.setDataRange(MIN_LIGHT, MAX_LIGHT);
+		outBatteryChannel.setDataRange(MIN_BATTERY, MAX_BATTERY);
+		heatingExhaustChannel.setDataRange(6.0, MAX_TEMPERATURE);
+		hotWaterOutChannel.setDataRange(6.0, MAX_TEMPERATURE);
+		coldWaterInChannel.setDataRange(MIN_TEMPERATURE, 45.0);
+		heatingReturnChannel.setDataRange(6.0, MAX_TEMPERATURE);
+		cellarTemperatureChannel.setDataRange(MIN_TEMPERATURE, 45.0);
+		powerConsumptionChannel.setDataRange(MIN_WATT, MAX_WATT);
+		upstairsTemperatureChannel.setDataRange(-20.0, 50.0);
+		upstairsBatteryChannel.setDataRange(MIN_BATTERY, MAX_BATTERY);
+	}
+	
 	private void initGPIO() {
 		CE = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_01);
 		IRQ = gpio.provisionDigitalInputPin(RaspiPin.GPIO_04, PinPullResistance.PULL_DOWN);
@@ -105,14 +128,14 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 		packet[1] = 0b00100110;
 		Spi.wiringPiSPIDataRW(0, packet, 2);
 
-		// write EN_RXADDR : enable RX address pipe 0 & 1 & 2 
+		// write EN_RXADDR : enable RX address pipe 5:0 
 		packet[0] = 0b00100010;
-		packet[1] = 0b00000111;
+		packet[1] = 0b00111111;
 		Spi.wiringPiSPIDataRW(0, packet, 2);
 
-		// write DYNPL, enable dynamic payload for pipe0 & 1 & 2
+		// write DYNPL, enable dynamic payload for pipe 5:0
 		packet[0] = 0b00111100;
-		packet[1] = 0b00000111;
+		packet[1] = 0b00111111;
 		Spi.wiringPiSPIDataRW(0, packet, 2);
 
 		//Flush RX FIFO
@@ -165,18 +188,143 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 			processPayload(readPayload);
 		}
 	}
-
+	
 	private void processPayload (byte[] redPayload) {
-		//		System.out.println( Utils.bytesToHex(redPayload) );
-
+		if (getDebugOutCheckBox().isSelected()) 
+			outputForDebug(redPayload);
+		
 		if (redPayload[0] == 0x40) { 		// pipe 0 : solar probe
-			processSolarProbe(redPayload);
+//			processSolarProbe(redPayload);
 		} else if (redPayload[0] == 0x42) { // pipe 1 : cellar
 			processCellarTemp(redPayload);
 		} else if (redPayload[0] == 0x44) { // pipe 2 : Instant power
 			processPower(redPayload);
+		} else if (redPayload[0] == 0x46) { // pipe 3 : Outside low power temperature probe
+			processOutProbe(redPayload);
+		} else if (redPayload[0] == 0x48) { // pipe 4 : low power temperature probe upstair
+			processUpstairsProbe(redPayload);
 		}
 
+	}
+	
+	private void outputForDebug(byte[] redPayload) {
+		StringBuffer sb = new StringBuffer();
+		sb.append(Utils.byteToHex(redPayload[0]));
+		sb.append(">");
+		int dataLenght = 0;
+		
+		sb.append(" ");
+
+		for (int i = 1; i < redPayload.length; i++) {
+			if (dataLenght > 0) {
+				sb.append(Utils.byteToHex(redPayload[i]));
+				dataLenght--;
+				if (dataLenght == 0)
+					sb.append(" ");
+			} else {
+				if (Character.isDigit((char)redPayload[i])) {
+					sb.append(": ");
+					dataLenght = Integer.parseInt( ""+((char)redPayload[i]) );
+				} else {
+					sb.append((char)redPayload[i]);
+				}
+			}
+		}
+		
+		System.out.println( sb.toString() );
+	}
+	
+	private void processUpstairsProbe(byte[] redPayload) {
+		byte reject = (byte) 0xFF;
+		if (redPayload[1] == 'T') {
+			if (redPayload[2] == '2') {
+				byte TLV = redPayload[3];
+				byte THV = redPayload[4];
+				if (!(TLV == reject && THV == reject)) {
+					ByteBuffer bb = ByteBuffer.allocate(2);
+					bb.order(ByteOrder.LITTLE_ENDIAN);
+					bb.put(TLV);
+					bb.put(THV);
+					short shortVal = bb.getShort(0);
+
+					double temperature = shortVal / 256.0;
+					if (temperature < MAX_TEMPERATURE && temperature > MIN_TEMPERATURE)
+						upstairsTemperatureChannel.newData(temperature);
+				}
+			}
+		}
+		if (redPayload[5] == 'B') {
+			if (redPayload[6] == '2') {
+				byte THV = redPayload[7];
+				byte TLV = redPayload[8];
+				if (!(TLV == reject && THV == reject)) {
+					ByteBuffer bb = ByteBuffer.allocate(2);
+					bb.order(ByteOrder.LITTLE_ENDIAN);
+					bb.put(TLV);
+					bb.put(THV);
+					short shortVal = bb.getShort(0);
+
+					double voltage = (1024.0/shortVal)*1.024;
+					if (voltage < 5.1 && voltage > 0.9)
+						upstairsBatteryChannel.newData(voltage);
+				}
+			}
+		}
+	}
+	
+	private void processOutProbe(byte[] redPayload) {
+		byte reject = (byte) 0xFF;
+		if (redPayload[1] == 'T') {
+			if (redPayload[2] == '2') {
+				byte TLV = redPayload[3];
+				byte THV = redPayload[4];
+				if (!(TLV == reject && THV == reject)) {
+					ByteBuffer bb = ByteBuffer.allocate(2);
+					bb.order(ByteOrder.LITTLE_ENDIAN);
+					bb.put(TLV);
+					bb.put(THV);
+					short shortVal = bb.getShort(0);
+
+					double temperature = shortVal / 256.0;
+					if (temperature < MAX_TEMPERATURE && temperature > MIN_TEMPERATURE)
+						outTemperatureChannel.newData(temperature);
+				}
+			}
+		}
+		if (redPayload[5] == 'B') {
+			if (redPayload[6] == '2') {
+				byte THV = redPayload[7];
+				byte TLV = redPayload[8];
+				if (!(TLV == reject && THV == reject)) {
+					ByteBuffer bb = ByteBuffer.allocate(2);
+					bb.order(ByteOrder.LITTLE_ENDIAN);
+					bb.put(TLV);
+					bb.put(THV);
+					short shortVal = bb.getShort(0);
+
+					double voltage = (1024.0/shortVal)*1.024;
+					if (voltage < 5.1 && voltage > 0.9)
+						outBatteryChannel.newData(voltage);
+				}
+			}
+		}
+		if (redPayload[9] == 'L') {
+			if (redPayload[10] == '2') {
+				byte THV = redPayload[11];
+				byte TLV = redPayload[12];
+				if (!(TLV == reject && THV == reject)) {
+					ByteBuffer bb = ByteBuffer.allocate(2);
+					bb.order(ByteOrder.LITTLE_ENDIAN);
+					bb.put(TLV);
+					bb.put(THV);
+					short shortVal = bb.getShort(0);
+
+					double voltage = shortVal;
+					if (voltage < 1024 && voltage >= 0)
+						outLightChannel.newData(voltage);
+				}
+			}
+		}
 	}
 
 	private void processPower(byte[] redPayload) {
@@ -190,11 +338,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 				bb.put(HV);
 				short watt = bb.getShort(0);
 				
-				if (getDebugOutCheckBox().isSelected()) {
-					System.out.println("debug > WirelessProbe - watt = "+watt);
-				}
-				
-				if (watt > 2 && watt < 5000) {
+				if (watt > MIN_WATT && watt < MAX_WATT) {
 					powerConsumptionChannel.newData(watt);
 				}
 			}
@@ -214,10 +358,6 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 				bb.put(r0);
 				int time = bb.getInt(0);
 				
-				if (getDebugOutCheckBox().isSelected()) {
-					System.out.println("debug > WirelessProbe - time = "+time);
-				}
-				
 			}
 		}
 	}
@@ -236,7 +376,7 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 					short shortVal = bb.getShort(0);
 
 					double temperature = shortVal * 0.0625;
-					if (temperature < 80 && temperature > -40)
+					if (temperature < MAX_TEMPERATURE && temperature > MIN_TEMPERATURE)
 						heatingExhaustChannel.newData(temperature);
 				}
 			}
@@ -253,12 +393,12 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 					short shortVal = bb.getShort(0);
 
 					double temperature = shortVal * 0.0625;
-					if (temperature < 80 && temperature > -40)
+					if (temperature < MAX_TEMPERATURE && temperature > MIN_TEMPERATURE)
 						heatingReturnChannel.newData(temperature);
 				}
 			}
 		}
-		if (redPayload[11] == 'T' && redPayload[12] == 'C') { //Heating Inflow
+		if (redPayload[11] == 'T' && redPayload[12] == 'C') { //Hot water pipe
 			if (redPayload[13] == '2') {
 				byte TLV = redPayload[14];
 				byte THV = redPayload[15];
@@ -270,8 +410,8 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 					short shortVal = bb.getShort(0);
 
 					double temperature = shortVal * 0.0625;
-					if (temperature < 80 && temperature > -40)
-						heatingInflowChannel.newData(temperature);
+					if (temperature < MAX_TEMPERATURE && temperature > MIN_TEMPERATURE)
+						hotWaterOutChannel.newData(temperature);
 				}
 
 			}
@@ -288,8 +428,26 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 					short shortVal = bb.getShort(0);
 
 					double temperature = shortVal * 0.0625;
-					if (temperature < 80 && temperature > -40)
+					if (temperature < MAX_TEMPERATURE && temperature > MIN_TEMPERATURE)
 						cellarTemperatureChannel.newData(temperature);
+				}
+
+			}
+		}
+		if (redPayload[21] == 'T' && redPayload[22] == 'E') { // Cold Water pipe
+			if (redPayload[23] == '2') {
+				byte TLV = redPayload[24];
+				byte THV = redPayload[25];
+				if (TLV != reject && THV != reject) {
+					ByteBuffer bb = ByteBuffer.allocate(2);
+					bb.order(ByteOrder.LITTLE_ENDIAN);
+					bb.put(TLV);
+					bb.put(THV);
+					short shortVal = bb.getShort(0);
+
+					double temperature = shortVal * 0.0625;
+					if (temperature < MAX_TEMPERATURE && temperature > MIN_TEMPERATURE)
+						coldWaterInChannel.newData(temperature);
 				}
 
 			}
@@ -297,98 +455,98 @@ public class WirelessProbe extends AbstractProbe implements GpioPinListenerDigit
 
 	}
 
-	private void processSeismoProbe(byte[] redPayload) {
+//	private void processSeismoProbe(byte[] redPayload) {
+//
+//		if (redPayload[1] == 'P') {	
+//			if (redPayload[2] == '2') {
+//				byte pHigh = redPayload[3];
+//				byte pLow = redPayload[4];
+//				int i;
+//				if (pLow < 0) i = 256 + pLow ;
+//				else i = pLow;
+//				i+= pHigh*256;
+//
+//				testChannel.newData(i);
+//			}
+//		}
+//	}
 
-		if (redPayload[1] == 'P') {	
-			if (redPayload[2] == '2') {
-				byte pHigh = redPayload[3];
-				byte pLow = redPayload[4];
-				int i;
-				if (pLow < 0) i = 256 + pLow ;
-				else i = pLow;
-				i+= pHigh*256;
-
-				//				testChannel.newData(i);
-			}
-		}
-	}
-
-	private void processSolarProbe(byte[] redPayload) {
-		if (redPayload.length < 11) return;
-
-		// Temperature info
-		if (redPayload[1] == 'T') {	
-			if (redPayload[2] == '2') {
-				byte TLV = redPayload[3];
-				byte THV = redPayload[4];
-
-				ByteBuffer bb = ByteBuffer.allocate(2);
-				bb.order(ByteOrder.LITTLE_ENDIAN);
-				bb.put(TLV);
-				bb.put(THV);
-				short shortVal = bb.getShort(0);
-
-				double temperature = shortVal * 0.0625;
-				if (temperature < 80 && temperature > -45)
-					outTemperatureChannel.newData(temperature);
-
-			}
-		}
-		// Light value
-		if (redPayload[5] == 'L') {	
-			if (redPayload[6] == '1') {
-				int i;
-				if (redPayload[7] < 0) i = 256 + redPayload[7] ;
-				else i = redPayload[7];
-				outLightChannel.newData(i);
-			}
-		}
-		//Battery value
-		if (redPayload[8] == 'B') {	
-			if (redPayload[9] == '1') {
-				int i;
-				if (redPayload[10] < 0)	i = 256 + redPayload[10] ;
-				else i = redPayload[10];
-				double v = i;
-				v = (v/256)*5;	// in Volt
-				outBatteryChannel.newData(v);
-			}
-		}
-		// DHT values
-		if (redPayload[11] == 'D') {	
-			if (redPayload[12] == '5') {
-				byte checksum = (byte) (redPayload[13] + redPayload[14] +redPayload[15] +redPayload[16]);
-			    
-			    if (checksum != redPayload[17]) {
-			    	System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+": DHT checksum fail");
-			    	return;
-			    }
-			    
-			    //Rel humidity
-			    ByteBuffer bb = ByteBuffer.allocate(2);
-				bb.order(ByteOrder.BIG_ENDIAN);
-				bb.put(redPayload[13]);
-				bb.put(redPayload[14]);
-				short shortVal = bb.getShort(0);
-				double relHumi = ((double)shortVal)/10;
-				if (relHumi < 100 && relHumi > 0)
-					humidChannel.newData(relHumi);
-				
-				// Temperature
-				bb = ByteBuffer.allocate(2);
-				bb.order(ByteOrder.BIG_ENDIAN);
-				bb.put(redPayload[15]);
-				bb.put(redPayload[16]);
-				shortVal = bb.getShort(0);
-				double temperature = ((double)shortVal)/10;
-				if ( (redPayload[15] & 0x80) == 0x80)
-					temperature = -temperature;
-				if (temperature < 80 && temperature > -45)
-					outTemperature2Channel.newData(temperature);
-			    
-			}
-		}
-	}
+//	private void processSolarProbe(byte[] redPayload) {
+//		if (redPayload.length < 11) return;
+//
+//		// Temperature info
+//		if (redPayload[1] == 'T') {	
+//			if (redPayload[2] == '2') {
+//				byte TLV = redPayload[3];
+//				byte THV = redPayload[4];
+//
+//				ByteBuffer bb = ByteBuffer.allocate(2);
+//				bb.order(ByteOrder.LITTLE_ENDIAN);
+//				bb.put(TLV);
+//				bb.put(THV);
+//				short shortVal = bb.getShort(0);
+//
+//				double temperature = shortVal * 0.0625;
+//				if (temperature < 80 && temperature > -45)
+//					outTemperatureChannel.newData(temperature);
+//
+//			}
+//		}
+//		// Light value
+//		if (redPayload[5] == 'L') {	
+//			if (redPayload[6] == '1') {
+//				int i;
+//				if (redPayload[7] < 0) i = 256 + redPayload[7] ;
+//				else i = redPayload[7];
+//				outLightChannel.newData(i);
+//			}
+//		}
+//		//Battery value
+//		if (redPayload[8] == 'B') {	
+//			if (redPayload[9] == '1') {
+//				int i;
+//				if (redPayload[10] < 0)	i = 256 + redPayload[10] ;
+//				else i = redPayload[10];
+//				double v = i;
+//				v = (v/256)*5;	// in Volt
+//				outBatteryChannel.newData(v);
+//			}
+//		}
+//		// DHT values
+//		if (redPayload[11] == 'D') {	
+//			if (redPayload[12] == '5') {
+//				byte checksum = (byte) (redPayload[13] + redPayload[14] +redPayload[15] +redPayload[16]);
+//			    
+//			    if (checksum != redPayload[17]) {
+//			    	System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+": DHT checksum fail");
+//			    	return;
+//			    }
+//			    
+//			    //Rel humidity
+//			    ByteBuffer bb = ByteBuffer.allocate(2);
+//				bb.order(ByteOrder.BIG_ENDIAN);
+//				bb.put(redPayload[13]);
+//				bb.put(redPayload[14]);
+//				short shortVal = bb.getShort(0);
+//				double relHumi = ((double)shortVal)/10;
+//				if (relHumi < 100 && relHumi > 0)
+//					humidChannel.newData(relHumi);
+//				
+//				// Temperature
+//				bb = ByteBuffer.allocate(2);
+//				bb.order(ByteOrder.BIG_ENDIAN);
+//				bb.put(redPayload[15]);
+//				bb.put(redPayload[16]);
+//				shortVal = bb.getShort(0);
+//				double temperature = ((double)shortVal)/10;
+//				if ( (redPayload[15] & 0x80) == 0x80)
+//					temperature = -temperature;
+//				if (temperature < 80 && temperature > -45)
+//					outTemperature2Channel.newData(temperature);
+//			    
+//			}
+//		}
+//	}
 
 	@Override
 	public JComponent[] getGuiComponents() {

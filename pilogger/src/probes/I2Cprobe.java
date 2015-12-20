@@ -13,6 +13,9 @@ import com.pi4j.io.i2c.I2CDevice;
 
 
 public class I2Cprobe extends AbstractProbe{
+	private static final double MIN_TEMPERATURE = -39, MAX_TEMPERATURE = 65;
+	private static final double MIN_PRESSURE = 85000, MAX_PRESSURE = 105000;
+	
 	public static final int BMP085_I2C_ADDR   = 0x77;
 	public static final int HMC5983_I2C_ADDR  = 0x1E;
 
@@ -82,8 +85,11 @@ public class I2Cprobe extends AbstractProbe{
 	 * @throws IOException
 	 */
 	public I2Cprobe(I2CBus bus) throws IOException {
+		initDataChannels();
+		
 		bmp085device = bus.getDevice(BMP085_I2C_ADDR);
 		readBMP085CalibrationData();
+		
 		hmc5983device = bus.getDevice(HMC5983_I2C_ADDR);
 
 		DataReaderThread dataReaderThread = new DataReaderThread();
@@ -93,6 +99,11 @@ public class I2Cprobe extends AbstractProbe{
 	@Override
 	public DataChannel[] getChannels() {
 		return new DataChannel[]{pressureChannel, temperatureChannel, magXChannel, magYChannel, magZChannel, magSumChannel};
+	}
+	
+	private void initDataChannels() {
+		temperatureChannel.setDataRange(6.0, 33.0);
+		pressureChannel.setDataRange(89000.0, 99000.0);
 	}
 
 	public void readBMP085CalibrationData() throws IOException {

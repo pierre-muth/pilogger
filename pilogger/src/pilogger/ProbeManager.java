@@ -14,14 +14,14 @@ import probes.AbstractProbe;
 
 public class ProbeManager implements ActionListener {
 	public static final String onlineFileLocalDirectory = "/home/pi/projects/pilogger/logs/online/";
-	private static final int MS_TO_UPLOAD = 600000;  // 10min
+	private static final int MS_TO_UPLOAD = 900000;  // 15min
 	private PiloggerGUI gui;
 	private HashMap<JMenuItem, DataChannel> scale0channelMap = new HashMap<>();
 	private HashMap<JMenuItem, DataChannel> scale1channelMap = new HashMap<>();
 	private HashMap<TimeScale, String> timeScaleText = new HashMap<>();
 	private DataChannel scale0selectedChannel;
 	private DataChannel scale1selectedChannel;
-	private TimeScale timeScaleSelected = TimeScale.MONTH;
+	private TimeScale timeScaleSelected = TimeScale.LONGRANGE;
 
 	/**
 	 * Manage the probes by generating Gui according to 
@@ -34,7 +34,7 @@ public class ProbeManager implements ActionListener {
 		initTimeScaleMenu();
 		
 		Timer t = new Timer();
-		t.schedule(new UploadFTP(), MS_TO_UPLOAD, MS_TO_UPLOAD);
+		t.schedule(new UploadFTP(), 120000, MS_TO_UPLOAD);
 	}
 	
 	public void addProbe(final AbstractProbe probe) {
@@ -157,6 +157,15 @@ public class ProbeManager implements ActionListener {
 			gui.getLineDataSource1().addDataSet(0, scale1selectedChannel.yearDataSet);			
 			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.yearDataSet);			
 			break;
+			
+		case LONGRANGE:
+			gui.getAreaDataSource1().addDataSet(0, scale1selectedChannel.longRangeMaxDataSet);
+			gui.getAreaDataSource1().addDataSet(1, scale1selectedChannel.longRangeMinDataSet);
+			gui.getAreaDataSource0().addDataSet(0, scale0selectedChannel.longRangeMaxDataSet);
+			gui.getAreaDataSource0().addDataSet(1, scale0selectedChannel.longRangeMinDataSet);
+			gui.getLineDataSource1().addDataSet(0, scale1selectedChannel.longRangeDataSet);			
+			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.longRangeDataSet);			
+			break;
 
 		default:
 			gui.getLineDataSource0().addDataSet(0, scale0selectedChannel.realTimeDataSet);			
@@ -174,11 +183,13 @@ public class ProbeManager implements ActionListener {
 		timeScaleText.put(TimeScale.DAY, "Day");
 		timeScaleText.put(TimeScale.MONTH, "Month");
 		timeScaleText.put(TimeScale.YEAR, "Year");
+		timeScaleText.put(TimeScale.LONGRANGE, "Life time");
 		gui.getScaleTimeMenu().add(getRealTimeMItem());
 		gui.getScaleTimeMenu().add(getHourTimeMItem());
 		gui.getScaleTimeMenu().add(getDayTimeMItem());
 		gui.getScaleTimeMenu().add(getMonthTimeMItem());
 		gui.getScaleTimeMenu().add(getYearTimeMItem());
+		gui.getScaleTimeMenu().add(getLongRangeTimeMItem());
 	} 
 
 	private JMenuItem realTimeMItem;
@@ -266,5 +277,21 @@ public class ProbeManager implements ActionListener {
 		}
 		return yearTimeMItem;
 	}
-	
+	private JMenuItem longRangeTimeMItem;
+	private JMenuItem getLongRangeTimeMItem() {
+		if (longRangeTimeMItem == null) {
+			longRangeTimeMItem = new JMenuItem(timeScaleText.get(TimeScale.LONGRANGE));
+			longRangeTimeMItem.setBackground(Color.black);
+			longRangeTimeMItem.setForeground(Color.white);
+			longRangeTimeMItem.setFont(PiloggerGUI.labelFont);
+			longRangeTimeMItem.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					timeScaleSelected = TimeScale.LONGRANGE;
+					resetDisplayedDataset();
+				}
+			});
+		}
+		return longRangeTimeMItem;
+	}
 }

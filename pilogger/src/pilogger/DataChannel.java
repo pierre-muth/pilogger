@@ -13,6 +13,8 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.sql.Time;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -24,6 +26,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.border.LineBorder;
 
 import cern.jdve.data.DataSet;
+import cern.jdve.data.DefaultDataSet;
 import cern.jdve.data.ShiftingDataSet;
 
 /**
@@ -51,6 +54,7 @@ public class DataChannel {
 	public static final String DAY_SUFIX = "Day";
 	public static final String MONTH_SUFIX = "Month";
 	public static final String YEAR_SUFIX = "Year";
+	public static final String LONGRANGE_SUFIX = "Longrange";
 
 	public ShiftingDataSet realTimeDataSet;
 	public ShiftingDataSet hourDataSet;
@@ -65,6 +69,9 @@ public class DataChannel {
 	public ShiftingDataSet yearDataSet;
 	public ShiftingDataSet yearMaxDataSet;
 	public ShiftingDataSet yearMinDataSet;
+	public DefaultDataSet longRangeDataSet;
+	public DefaultDataSet longRangeMaxDataSet;
+	public DefaultDataSet longRangeMinDataSet;
 
 	private AveragingTask averagingTask;
 
@@ -83,7 +90,16 @@ public class DataChannel {
 	private double yearMin = Double.POSITIVE_INFINITY, yearMax = Double.NEGATIVE_INFINITY;
 	private int yearCount = 0;
 
+	private double longRangeSum = 0;
+	private double longRangeTimeSum = 0;
+	private double longRangeMin = Double.POSITIVE_INFINITY, longRangeMax = Double.NEGATIVE_INFINITY;
+	private int longRangeCount = 0;
+	private int dayOfLastLongRangePoint = -1;
+	
 	private double previousData = Double.NaN;
+	
+	private double dataRangeMax = Double.POSITIVE_INFINITY;
+	private double dataRangeMin = Double.NEGATIVE_INFINITY;
 
 	private JButton blinkButton;
 	private JButton reloadButton;
@@ -93,7 +109,7 @@ public class DataChannel {
 	private boolean isDifferential = false;
 
 	/**
-	 *  DataChannel own dataSet of 4 different time scale
+	 *  DataChannel own dataSet of 6 different time scale
 	 *  and fire DataReceivedEvent when newData()
 	 * @param uniqueChannelName 
 	 */
@@ -119,6 +135,9 @@ public class DataChannel {
 		yearMaxDataSet = new ShiftingDataSet(channelName+"Year max", CHART_BUFFER_LENGTH, true);
 		yearMinDataSet = new ShiftingDataSet(channelName+"Year min", CHART_BUFFER_LENGTH, true);
 
+		longRangeDataSet = new DefaultDataSet(channelName+"All");
+		longRangeMaxDataSet = new DefaultDataSet(channelName+"All max");
+		longRangeMinDataSet = new DefaultDataSet(channelName+"All min");
 
 		Path piloggerDir = Paths.get(logFileDirectory);
 		logFilePath = piloggerDir.resolve(this.logFileName+".csv");
@@ -138,6 +157,11 @@ public class DataChannel {
 	
 	public void setDifferentialMode(boolean isDiff) {
 		this.isDifferential = isDiff;
+	}
+	
+	public void setDataRange(double min, double max) {
+		this.dataRangeMin = min;
+		this.dataRangeMax = max;
 	}
 	
 	public String getUnit() {
@@ -165,7 +189,9 @@ public class DataChannel {
 			}
 		}
 		
-		processNewData(data);
+		if (data >= dataRangeMin && data <= dataRangeMax) {
+			processNewData(data);
+		}
 		
 		Blinker b = new Blinker();
 		b.start();
@@ -231,8 +257,16 @@ public class DataChannel {
 		hourDataSet.add(averagedDataPoint.time, averagedDataPoint.value);
 		hourMaxDataSet.add(averagedDataPoint.time, averagedDataPoint.max);
 		hourMinDataSet.add(averagedDataPoint.time, averagedDataPoint.min);
-
-		processNewHourDataForDayDataSets(averagedDataPoint, isFromFile);
+		
+		boolean rejectPoint = false;
+		if (averagedDataPoint.min < dataRangeMin || averagedDataPoint.min > dataRangeMax) rejectPoint = true;
+		if (averagedDataPoint.max < dataRangeMin || averagedDataPoint.max > dataRangeMax) rejectPoint = true;
+		if (averagedDataPoint.value < dataRangeMin || averagedDataPoint.value > dataRangeMax) rejectPoint = true;
+		
+		if (!rejectPoint) {
+			processNewHourDataForDayDataSets(averagedDataPoint, isFromFile);
+			processDataForLongRange(averagedDataPoint, isFromFile);
+		}
 		
 		if(!isFromFile && isNewData) {
 			if ( ! LogFile.store(logFilePath, averagedDataPoint) ) {
@@ -240,7 +274,37 @@ public class DataChannel {
 			}
 		}
 	}
+	
+	private void processDataForLongRange(AveragedDataPoint averagedDataPoint, boolean isFromFile) {
+		Calendar c = Calendar.getInstance();
+		c.setTimeInMillis(averagedDataPoint.time);
+		int today = c.get(Calendar.DAY_OF_YEAR);
+		if (dayOfLastLongRangePoint == -1) dayOfLastLongRangePoint = today;
+		
+		longRangeSum += averagedDataPoint.value;
+		longRangeTimeSum += averagedDataPoint.time;
+		if (averagedDataPoint.min < longRangeMin) longRangeMin = averagedDataPoint.min;
+		if (averagedDataPoint.max > longRangeMax) longRangeMax = averagedDataPoint.max;
+		longRangeCount++;
+		
+		if (dayOfLastLongRangePoint != today) {
+			long averageTime = (long) (longRangeTimeSum/longRangeCount);
+			double averageValue = longRangeSum/longRangeCount;
 
+			longRangeDataSet.add(averageTime, averageValue);
+			longRangeMinDataSet.add(averageTime, longRangeMin);
+			longRangeMaxDataSet.add(averageTime, longRangeMax);
+			
+			longRangeSum = 0;
+			longRangeTimeSum = 0;
+			longRangeMin = Double.POSITIVE_INFINITY;
+			longRangeMax = Double.NEGATIVE_INFINITY;
+			longRangeCount = 0;
+			dayOfLastLongRangePoint = today;
+		}
+		
+	}
+	
 	private void processNewHourDataForDayDataSets(AveragedDataPoint averagedDataPoint, boolean isFromFile) {
 		daySum += averagedDataPoint.value;
 		dayTimeSum += averagedDataPoint.time;
@@ -292,6 +356,7 @@ public class DataChannel {
 
 			if (!isFromFile) {
 				writeOnlineMonthData();
+				writeOnlineLongRangeData();
 			}
 			
 			monthSum = 0;
@@ -372,6 +437,13 @@ public class DataChannel {
 		yearCount = 0;
 
 		previousData = Double.NaN;
+
+		longRangeSum = 0;
+		longRangeTimeSum = 0;
+		longRangeMin = Double.POSITIVE_INFINITY;
+		longRangeMax = Double.NEGATIVE_INFINITY;
+		longRangeCount = 0;
+		dayOfLastLongRangePoint = -1;
 		
 		realTimeDataSet.clear();
 		hourDataSet.clear();
@@ -386,6 +458,9 @@ public class DataChannel {
 		yearDataSet.clear();
 		yearMaxDataSet.clear();
 		yearMinDataSet.clear();
+		longRangeDataSet.clear();
+		longRangeMinDataSet.clear();
+		longRangeMaxDataSet.clear();
 	}
 	
 	private void writeOnlineDataSet(DataSet dataset, DataSet minDataset, DataSet maxDataset, String timeScale) {
@@ -434,6 +509,10 @@ public class DataChannel {
 
 	private void writeOnlineYearData() {
 		writeOnlineDataSet(yearDataSet, yearMinDataSet, yearMaxDataSet, YEAR_SUFIX);		
+	}
+	
+	private void writeOnlineLongRangeData() {
+		writeOnlineDataSet(longRangeDataSet, longRangeMinDataSet, longRangeMaxDataSet, LONGRANGE_SUFIX);		
 	}
 
 	private class AveragingTask extends TimerTask{
@@ -510,6 +589,10 @@ public class DataChannel {
 					DataChannel.this.yearMinDataSet,
 					DataChannel.this.yearMaxDataSet, YEAR_SUFIX);
 			
+			loadDataSetLogFile(DataChannel.this.longRangeDataSet,
+					DataChannel.this.longRangeMinDataSet,
+					DataChannel.this.longRangeMaxDataSet, LONGRANGE_SUFIX);
+			
 			
 			DataChannel.this.isFileLoading.set(false);
 			DataChannel.this.setRecording(true);
@@ -575,7 +658,7 @@ public class DataChannel {
 		public void run() {
 			DataChannel.this.setRecording(false);
 			DataChannel.this.isFileLoading.set(true);
-
+			
 			try {
 				BufferedReader logFileReader = Files.newBufferedReader(this.logFilePath, Charset.defaultCharset());
 				String line;
