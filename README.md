@@ -1,7 +1,7 @@
 # pilogger
 Raspberry Pi Java project to acquire, store, and display numerical data from different Channels over 5 different time scale. So far Atmospheric pressure and temperature with a BMP085 probe, Background Radiation with a serial Geiger counter, System load and memory usage of the operating system, temperature and brightness with an outside probe linked with nRF24L01+. Data are pushed online to be visualized with a google chart page :
 
-http://muth.inc.free.fr/pilogger/day.html
+http://muth.inc.free.fr/pilogger/index.php?scale=Day&grouped=0
 
 Story of the project :
 http://pierremuth.wordpress.com/rpiadventure/
