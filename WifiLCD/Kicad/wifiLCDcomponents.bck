@@ -1,0 +1,29 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP ESP-12E
+D Espressif ESP8266 wifi module
+$ENDCMP
+#
+$CMP LP38692
+D 1-A Low Dropout CMOS Linear Regulators
+$ENDCMP
+#
+$CMP MCP1755
+D MCP1755, Fixed 300mA Low Dropout Voltage Regulator, Positive
+K REGULATOR LDO
+$ENDCMP
+#
+$CMP REG710
+D 60mA, 5.0V, Buck/Boost Charge Pump
+K REG710
+$ENDCMP
+#
+$CMP Serial
+D Serial com connector
+$ENDCMP
+#
+$CMP Sharp_Memory_LCD
+D Connector for Sharp Memory LCD
+$ENDCMP
+#
+#End Doc Library

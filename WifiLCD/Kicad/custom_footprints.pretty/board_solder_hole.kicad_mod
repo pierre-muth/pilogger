@@ -1,0 +1,10 @@
+(module board_solder_hole (layer F.Cu) (tedit 579B974F)
+  (fp_text reference REF** (at 0.5 7.5) (layer F.SilkS) hide
+    (effects (font (size 1 1) (thickness 0.15)))
+  )
+  (fp_text value board_solder_hole (at -3 0.5 90) (layer F.Fab)
+    (effects (font (size 1 1) (thickness 0.15)))
+  )
+  (pad "#" thru_hole oval (at 0 0) (size 3.8 12) (drill oval 1.8 10) (layers *.Cu *.Mask F.SilkS)
+    (solder_mask_margin 0.2) (solder_paste_margin 0.2) (clearance 0.2))
+)
