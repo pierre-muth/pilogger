@@ -10,6 +10,7 @@ import probes.SystemProbe;
 import probes.WirelessProbe;
 import tests.BMP085probeSimulation;
 import tests.GeigerProbeSimulation;
+import tests.PowerProbeSimulation;
 import cern.jdve.data.DefaultDataSet;
 
 import com.pi4j.io.gpio.GpioController;
@@ -32,13 +33,14 @@ public class PiloggerImpl {
      * Implementation of the Pilogger application GUI
      * Initialize links and Probes
      */
-    public PiloggerImpl(boolean simulation, PiloggerGUI gui) {
+    public PiloggerImpl(PiloggerGUI gui) {
     	
     	probeManager = new ProbeManager(gui);
     	
-    	if (simulation) {
+    	if (PiloggerLauncher.simulation) {
     		probeManager.addProbe(new BMP085probeSimulation());
     		probeManager.addProbe(new GeigerProbeSimulation());
+    		probeManager.addProbe(new PowerProbeSimulation());
     	} else {
     		initI2CandBMP085probe();
     		initComAndGeigerProbe(); 

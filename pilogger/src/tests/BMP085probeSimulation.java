@@ -18,6 +18,8 @@ public class BMP085probeSimulation extends AbstractProbe{
 	 * @throws IOException
 	 */
 	public BMP085probeSimulation() {
+		pressureChannel.setUnit("Pa");
+		temperatureChannel.setUnit("°C");
 		DataSimulationThread dataThread = new DataSimulationThread();
 		dataThread.start();
 	}
@@ -28,9 +30,8 @@ public class BMP085probeSimulation extends AbstractProbe{
 	}
 
 	private class DataSimulationThread extends Thread {
-		public static final int OVER_SAMPLING = 5;
-		private double temperatureSum;
-		private double pressureSum;
+		private double temperature;
+		private double pressure;
 		private int dataCount;
 
 		public DataSimulationThread() {
@@ -38,37 +39,28 @@ public class BMP085probeSimulation extends AbstractProbe{
 
 		@Override
 		public void run() {
-			int rawTemperature;
-			int msb, lsb, xlsb;
-			int rawPressure;
 			while (true) {
 
-				temperatureSum += 25 + (Math.random()*2);
-				pressureSum += 95500 + (Math.random()*10);
+				temperature = 5 + (Math.random()*2) + (Math.sin(dataCount/(Math.PI*10)) *25.5);
+				pressure = 95500 + (Math.random()*100) + (Math.cos(dataCount/(Math.PI*18)) *200);
 				dataCount++;
 
-				if (dataCount >= OVER_SAMPLING) {
-					pressureChannel.newData(pressureSum/OVER_SAMPLING);
-					temperatureChannel.newData(temperatureSum/OVER_SAMPLING);
-					temperatureSum = 0;
-					pressureSum = 0;
-					dataCount = 0;
-				}
+				pressureChannel.newData(pressure);
+				temperatureChannel.newData(temperature);
+				temperature = 0;
+				pressure = 0;
 
 				try {
-					sleep(100);
+					sleep(500);
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				} 
 			}
-
 		}
 	}
 
 	@Override
 	public JComponent[] getGuiComponents() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 

@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.sql.Time;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Timer;
@@ -34,8 +35,11 @@ import cern.jdve.data.ShiftingDataSet;
  */
 public class DataChannel {
 	public static final String logFileDirectory = "/home/pi/projects/pilogger/logs/";
+	public static final String logFileDirectorySimulation = "c:\\pilogger\\logs\\online\\";
 
 	private Path logFilePath;
+	
+	private boolean uploadOnLine = true;
 
 	public String channelName;
 	private String unit = "";
@@ -103,10 +107,13 @@ public class DataChannel {
 
 	private JButton blinkButton;
 	private JButton reloadButton;
+	private ChannelPanel channelPanel;
 	
 	private AtomicBoolean isRecording = new AtomicBoolean(true);
 	private AtomicBoolean isFileLoading = new AtomicBoolean(false);
 	private boolean isDifferential = false;
+	
+	private AveragedDataPoint lastAveragedDataPoint;
 
 	/**
 	 *  DataChannel own dataSet of 6 different time scale
@@ -139,7 +146,10 @@ public class DataChannel {
 		longRangeMaxDataSet = new DefaultDataSet(channelName+"All max");
 		longRangeMinDataSet = new DefaultDataSet(channelName+"All min");
 
-		Path piloggerDir = Paths.get(logFileDirectory);
+		Path piloggerDir;
+		if (PiloggerLauncher.simulation) piloggerDir = Paths.get(logFileDirectorySimulation);
+		else piloggerDir = Paths.get(logFileDirectory);
+		
 		logFilePath = piloggerDir.resolve(this.logFileName+".csv");
 
 		loadDataSetLogFile();
@@ -191,11 +201,22 @@ public class DataChannel {
 		
 		if (data >= dataRangeMin && data <= dataRangeMax) {
 			processNewData(data);
+			if (channelPanel != null){		// could be null if we haven't put on the wifi panel
+				channelPanel.setValue(data);
+			}
 		}
 		
 		Blinker b = new Blinker();
 		b.start();
 		
+		
+	}
+	
+	public ChannelPanel getChannelPanel(){
+		if (channelPanel == null){
+			channelPanel = new ChannelPanel(this);
+		}
+		return channelPanel;
 	}
 
 	public JComponent getChannelButton() {
@@ -246,6 +267,10 @@ public class DataChannel {
 		});
 	}
 
+	public AveragedDataPoint getLastAveragedDataPoint() {
+		return lastAveragedDataPoint;
+	}
+	
 	private void processNewData(double data) {
 		long time = System.currentTimeMillis();
 		realTimeDataSet.add(time, data);
@@ -257,6 +282,8 @@ public class DataChannel {
 		hourDataSet.add(averagedDataPoint.time, averagedDataPoint.value);
 		hourMaxDataSet.add(averagedDataPoint.time, averagedDataPoint.max);
 		hourMinDataSet.add(averagedDataPoint.time, averagedDataPoint.min);
+		
+		lastAveragedDataPoint = averagedDataPoint;
 		
 		boolean rejectPoint = false;
 		if (averagedDataPoint.min < dataRangeMin || averagedDataPoint.min > dataRangeMax) rejectPoint = true;
@@ -272,6 +299,15 @@ public class DataChannel {
 			if ( ! LogFile.store(logFilePath, averagedDataPoint) ) {
 				System.out.println("Problem with file "+logFileName+".csv");
 			}
+			
+//			if (uploadOnLine) {
+//				UploadMySQL.storeInstantValue(channelName, averagedDataPoint);
+//			}
+			
+			
+//			if ( !UploadMySQL.storeValueAndDeleteLast(logFileName, HOUR_SUFIX, averagedDataPoint) ) {
+//				System.out.println("Problem uploading "+logFileName+HOUR_SUFIX+" to MySQL");
+//			} 
 		}
 	}
 	
@@ -294,6 +330,10 @@ public class DataChannel {
 			longRangeDataSet.add(averageTime, averageValue);
 			longRangeMinDataSet.add(averageTime, longRangeMin);
 			longRangeMaxDataSet.add(averageTime, longRangeMax);
+			
+//			if ( !UploadMySQL.storeValueAndDeleteLast(logFileName, LONGRANGE_SUFIX, averagedDataPoint) ) {
+//				System.out.println("Problem uploading "+logFileName+LONGRANGE_SUFIX+" to MySQL");
+//			}
 			
 			longRangeSum = 0;
 			longRangeTimeSum = 0;
@@ -326,6 +366,10 @@ public class DataChannel {
 				writeOnlineRealTimeData();
 				writeOnlineHourData();
 				writeOnlineDayData();
+				
+//				if ( !UploadMySQL.storeValueAndDeleteLast(logFileName, DAY_SUFIX, averagedDataPoint) ) {
+//					System.out.println("Problem uploading "+logFileName+DAY_SUFIX+" to MySQL");
+//				}
 			}
 
 			daySum = 0;
@@ -357,6 +401,10 @@ public class DataChannel {
 			if (!isFromFile) {
 				writeOnlineMonthData();
 				writeOnlineLongRangeData();
+				
+//				if ( !UploadMySQL.storeValueAndDeleteLast(logFileName, MONTH_SUFIX, averagedDataPoint) ) {
+//					System.out.println("Problem uploading "+logFileName+MONTH_SUFIX+" to MySQL");
+//				}
 			}
 			
 			monthSum = 0;
@@ -384,6 +432,9 @@ public class DataChannel {
 			
 			if (!isFromFile) {
 				writeOnlineYearData();
+//				if ( !UploadMySQL.storeValueAndDeleteLast(logFileName, YEAR_SUFIX, averagedDataPoint) ) {
+//					System.out.println("Problem uploading "+logFileName+YEAR_SUFIX+" to MySQL");
+//				}
 			}
 
 			yearSum = 0;
@@ -609,8 +660,11 @@ public class DataChannel {
 				double value = Double.NaN, min = Double.NaN, max = Double.NaN;
 				boolean realtimeData = timeScale.contains(REALTIME_SUFIX);
 
+//				UploadMySQL.emptyTable(logFileName, timeScale);
+				
 				logFileReader.readLine(); //header
 				while ((line = logFileReader.readLine()) != null) {
+					time = 0; value = 0; min = 0; max = 0;
 					elements = line.split(", ");
 					if (elements.length >= 2) {
 						try {
@@ -631,6 +685,8 @@ public class DataChannel {
 							System.out.println(channelName+" "+timeScale+" corrupted point");
 						}
 					}
+//					if (!realtimeData)
+//						UploadMySQL.storeValue(logFileName, timeScale, new AveragedDataPoint((long) time, value, min, max));
 				}
 
 				logFileReader.close();
@@ -710,10 +766,19 @@ public class DataChannel {
 				@Override
 				public void run() {	DataChannel.this.getChannelButton().setBackground(Color.white); }
 			});
+			
 			try {
 				sleep(DELAY);
 			} catch (InterruptedException e) { e.printStackTrace(); }
 
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {	DataChannel.this.getChannelButton().setBackground(Color.gray); }
+			});
+			
+			try {
+				sleep(DELAY);
+			} catch (InterruptedException e) { e.printStackTrace(); }
 			
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override

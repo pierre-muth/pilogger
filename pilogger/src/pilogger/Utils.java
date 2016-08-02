@@ -19,4 +19,18 @@ public class Utils {
 		int v = aByte & 0xFF;
 		return new String ( new char[] {hexArray[v >>> 4], hexArray[v & 0x0F]} );
 	}
+	
+	public static byte reverseBitOrder(byte b) {
+	    int converted = 0x00;
+	    converted ^= (b & 0b1000_0000) >> 7;
+	    converted ^= (b & 0b0100_0000) >> 5;
+	    converted ^= (b & 0b0010_0000) >> 3;
+	    converted ^= (b & 0b0001_0000) >> 1;
+	    converted ^= (b & 0b0000_1000) << 1;
+	    converted ^= (b & 0b0000_0100) << 3;
+	    converted ^= (b & 0b0000_0010) << 5;
+	    converted ^= (b & 0b0000_0001) << 7;
+
+	    return (byte) (converted & 0xFF);
+	}
 }

@@ -10,6 +10,8 @@ import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 
 import javax.swing.JButton;
 import javax.swing.JMenuItem;
@@ -26,19 +28,22 @@ import cern.jdve.renderer.DiffAreaChartRenderer;
 import cern.jdve.renderer.PolylineChartRenderer;
 import cern.jdve.scale.TimeStepsDefinition;
 
-public class PiloggerGUI extends JPanel {
+public class PiloggerGUI extends JPanel implements KeyListener{
 	public static Font labelFont = new Font("Dialog", Font.PLAIN, 9);
 	public static final String DATE_PATERN = "yyyy.MM.dd HH:mm:ss";
 	private Color line0ChartColor = new Color(255, 255, 255, 255);
 	private Color line1ChartColor = new Color(128, 128, 128, 255);
 	private Color areaChartColor  = new Color(55, 55, 55, 100);
 	private Style line0Style = new Style(new BasicStroke(1.0f), line0ChartColor, line0ChartColor);
+//	private Style line0Style = new Style(new BasicStroke(1.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_BEVEL, 
+//			1.0f,new float[] { 2, 2 }, 0), line0ChartColor, line0ChartColor);
 	private Style line1Style = new Style(new BasicStroke(1.0f), line1ChartColor, line1ChartColor);
 	private Style areaStyle  = new Style(new BasicStroke(0.0f), areaChartColor, areaChartColor);
 	private EmptyBorder emptyBorder = new EmptyBorder(0, 0, 0, 0);
 	private LineBorder greyBorder = new LineBorder(Color.gray, 1);
 	private static final String CARD_CHART = "Chart";
 	private static final String CARD_CONF = "Config";
+	private static final String CARD_WIFI = "wifi Panel";
 	
 	/**
 	 * Pilogger application GUI. 
@@ -50,6 +55,7 @@ public class PiloggerGUI extends JPanel {
 		setLayout(getCardLayout());
 		add(getChartCard(), CARD_CHART);
 		add(getConfCard(), CARD_CONF);
+		add(getWifiCard(), CARD_WIFI);
 		setPreferredSize(new Dimension(320, 240));
 	}
 	
@@ -77,7 +83,7 @@ public class PiloggerGUI extends JPanel {
 	private JPanel ledPanel;
 	protected JPanel getLedPanel() {
 		if (ledPanel == null) {
-			ledPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
+			ledPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 0));
 			ledPanel.setBackground(Color.black);
 		}
 		return ledPanel;
@@ -93,6 +99,46 @@ public class PiloggerGUI extends JPanel {
 			confCard.add(getChannelReloadPanel(), BorderLayout.SOUTH);
 		}
 		return confCard;
+	}
+	
+	private JPanel wifiCard;
+	protected JPanel getWifiCard(){
+		if (wifiCard == null){
+			wifiCard = new JPanel(new BorderLayout(0, 0));
+			wifiCard.setBackground(Color.black);
+//			wifiCard.add(getWifiBackButton() );	// back button
+			
+			wifiCard.add(getWifiPanel(), BorderLayout.CENTER); 
+		}
+		return wifiCard;
+	}
+	
+	private JButton wifiBackButton;
+	private JButton getWifiBackButton() {
+		if (wifiBackButton == null) {
+			wifiBackButton = new JButton("Back");
+			wifiBackButton.setBorder(new LineBorder(Color.gray));
+			wifiBackButton.setBackground(Color.black);
+			wifiBackButton.setForeground(Color.white);
+			wifiBackButton.setPreferredSize(new Dimension(30, 12));
+			wifiBackButton.setFont(PiloggerGUI.labelFont);
+			wifiBackButton.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					getCardLayout().show(PiloggerGUI.this, CARD_CHART);
+				}
+			});
+		}
+		return wifiBackButton;
+	}
+	
+	private JPanel wifiPanel;
+	protected JPanel getWifiPanel(){
+		if (wifiPanel == null){
+			wifiPanel = new JPanel(new GridLayout(4, 1, 0, 1));
+			wifiPanel.setBackground(Color.gray);
+		}
+		return wifiPanel;
 	}
 	
 	private JPanel probeCustomPanel;
@@ -173,7 +219,7 @@ public class PiloggerGUI extends JPanel {
 			scale0Button = new JButton("Scale 0");
 			scale0Button.setFont(labelFont);
 			scale0Button.setBackground(Color.black);
-			scale0Button.setForeground(Color.gray);
+			scale0Button.setForeground(Color.white);
 			scale0Button.setBorder(emptyBorder);
 			scale0Button.setFocusable(false);
 			scale0Button.addActionListener(new ActionListener() {
@@ -192,7 +238,7 @@ public class PiloggerGUI extends JPanel {
 			scale1Button = new JButton("Scale 1");
 			scale1Button.setFont(labelFont);
 			scale1Button.setBackground(Color.black);
-			scale1Button.setForeground(Color.gray);
+			scale1Button.setForeground(Color.white);
 			scale1Button.setBorder(emptyBorder);
 			scale1Button.setFocusable(false);
 			scale1Button.addActionListener(new ActionListener() {
@@ -210,7 +256,7 @@ public class PiloggerGUI extends JPanel {
 			timeScaleButton = new JButton("Time Scale");
 			timeScaleButton.setFont(labelFont);
 			timeScaleButton.setBackground(Color.black);
-			timeScaleButton.setForeground(Color.gray);
+			timeScaleButton.setForeground(Color.white);
 			timeScaleButton.setBorder(emptyBorder);
 			timeScaleButton.setFocusable(false);
 			timeScaleButton.addActionListener(new ActionListener() {
@@ -247,6 +293,7 @@ public class PiloggerGUI extends JPanel {
 			scaleTimeMenu.setBackground(Color.black);
 			scaleTimeMenu.setBorder(greyBorder);
 			scaleTimeMenu.add(getConfigItem());
+			scaleTimeMenu.add(getWifiPanelItem());
 		}
 		return scaleTimeMenu;
 	}
@@ -268,6 +315,23 @@ public class PiloggerGUI extends JPanel {
 		return configItem;
 	}
 	
+	private JMenuItem wifiPanelItem;
+	private JMenuItem getWifiPanelItem() {
+		if (wifiPanelItem == null) {
+			wifiPanelItem = new JMenuItem(CARD_WIFI);
+			wifiPanelItem.setBackground(Color.black);
+			wifiPanelItem.setForeground(Color.white);
+			wifiPanelItem.setFont(PiloggerGUI.labelFont);
+			wifiPanelItem.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					getCardLayout().show(PiloggerGUI.this, CARD_WIFI);
+				}
+			});
+		}
+		return wifiPanelItem;
+	}
+	
 	private Chart mainChart;
 	private Chart getMainChart() {
 		if (mainChart == null) {
@@ -275,14 +339,14 @@ public class PiloggerGUI extends JPanel {
 			mainChart.addYAxis(true, false);
 			
 			mainChart.getXScale().setLabelFont(labelFont);
-			mainChart.getXScale().setLabelForeground(Color.gray);
+			mainChart.getXScale().setLabelForeground(Color.white);
 			mainChart.getXScale().setForegroundColor(Color.gray);
 			
 			mainChart.getYScale().setLabelFont(labelFont);
 			mainChart.getYScale().setLabelForeground(Color.white);
-	        mainChart.getYScale().setForegroundColor(Color.gray);
+	        mainChart.getYScale().setForegroundColor(Color.white);
 	        mainChart.getYScale(1).setLabelFont(labelFont);
-	        mainChart.getYScale(1).setLabelForeground(Color.gray);
+	        mainChart.getYScale(1).setLabelForeground(Color.white);
 	        mainChart.getYScale(1).setForegroundColor(Color.gray);
 	        
 	        mainChart.getArea().setBackground(Color.black);
@@ -300,6 +364,7 @@ public class PiloggerGUI extends JPanel {
 	        mainChart.addRenderer(0, getAreaRenderer0());
 	        mainChart.addRenderer(1, getLineRenderer1());
 	        mainChart.addRenderer(0, getLineRenderer0());
+	        
 	         
 //	        mainChart.addInteractor(ChartInteractor.DATA_PICKER);
 	        
@@ -374,6 +439,22 @@ public class PiloggerGUI extends JPanel {
 			areaDataSource1 = new DefaultDataSource();
 		}
 		return areaDataSource1;
+	}
+	
+	@Override
+	public void keyPressed(KeyEvent e) {
+		if (e.getKeyCode() == KeyEvent.VK_ESCAPE){
+			getCardLayout().show(PiloggerGUI.this, CARD_CHART);
+		}
+	}
+
+	@Override
+	public void keyReleased(KeyEvent arg0) {
+	}
+
+	@Override
+	public void keyTyped(KeyEvent e) {
+		
 	}
 	
 }

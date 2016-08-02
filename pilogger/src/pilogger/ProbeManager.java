@@ -4,6 +4,9 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Timer;
 
@@ -13,8 +16,11 @@ import javax.swing.SwingUtilities;
 import probes.AbstractProbe;
 
 public class ProbeManager implements ActionListener {
-	public static final String onlineFileLocalDirectory = "/home/pi/projects/pilogger/logs/online/";
-	private static final int MS_TO_UPLOAD = 900000;  // 15min
+	public static String onlineFileLocalDirectory = "/home/pi/projects/pilogger/logs/online/";
+	public static String configFileDirectory = "/home/pi/projects/pilogger/config/";
+	public static String configWifiChannels = "wifiLCD.txt";
+	private static final int MS_TO_UPLOAD_FTP = 900000;  // 15min
+	private static final int MS_TO_SCREEN_CAPTURE = 300000;  // 5min
 	private PiloggerGUI gui;
 	private HashMap<JMenuItem, DataChannel> scale0channelMap = new HashMap<>();
 	private HashMap<JMenuItem, DataChannel> scale1channelMap = new HashMap<>();
@@ -22,6 +28,9 @@ public class ProbeManager implements ActionListener {
 	private DataChannel scale0selectedChannel;
 	private DataChannel scale1selectedChannel;
 	private TimeScale timeScaleSelected = TimeScale.LONGRANGE;
+	private String[] wifiLCDDisplayedChannel = new String[4];
+	
+	private boolean uploadOnLine = true;
 
 	/**
 	 * Manage the probes by generating Gui according to 
@@ -29,15 +38,56 @@ public class ProbeManager implements ActionListener {
 	 * displayed in chart.
 	 * @param gui Pilogger Gui.
 	 */
+	
 	public ProbeManager(PiloggerGUI gui) {
 		this.gui = gui;
 		initTimeScaleMenu();
 		
-		Timer t = new Timer();
-		t.schedule(new UploadFTP(), 120000, MS_TO_UPLOAD);
+		if (PiloggerLauncher.simulation) {
+			onlineFileLocalDirectory = "c:\\pilogger\\logs\\online\\";
+			configFileDirectory = "c:\\pilogger\\config\\";
+		} else {
+			if (uploadOnLine) {
+				Timer timerFTP = new Timer();
+				Timer timerMySQL = new Timer();
+				timerFTP.schedule(new UploadFTP(), 120000, MS_TO_UPLOAD_FTP);
+				timerMySQL.schedule(new UploadMySQL(this), 60000, (25*1000));
+				
+				try {
+					Thread wifiDisplayServerThread = new Thread(new WifiDisplay(gui.getWifiCard()));
+					wifiDisplayServerThread.start();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		
+		//read config for wifi LCD
+		String line;
+		String path = configFileDirectory + configWifiChannels;
+		try (BufferedReader br = new BufferedReader( new FileReader(path) )){
+			for (int i = 0; i < wifiLCDDisplayedChannel.length; i++) {
+				line = br.readLine();
+				wifiLCDDisplayedChannel[i] = line;
+			}
+			
+		} catch (IOException e) {
+			System.out.println("Error in "+configWifiChannels);
+		};
+		
+	}
+	
+	public int getChannelsNumber() {
+		return scale0channelMap.size();
+	}
+	
+	public DataChannel[] getChannels() {
+		DataChannel[] channels = new DataChannel[scale0channelMap.size()];
+		return scale0channelMap.values().toArray(channels);
 	}
 	
 	public void addProbe(final AbstractProbe probe) {
+		
 		for (int i = 0; i < probe.getChannels().length; i++) {
 			final DataChannel channel = probe.getChannels()[i]; 
 			final JMenuItem item0 = new JMenuItem(channel.channelName);
@@ -54,7 +104,6 @@ public class ProbeManager implements ActionListener {
 			item1.setFont(PiloggerGUI.labelFont);
 			item0.addActionListener(this);
 			item1.addActionListener(this);
-
 
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
@@ -73,6 +122,13 @@ public class ProbeManager implements ActionListener {
 			else if (scale1selectedChannel == null) {
 				scale1selectedChannel = channel;
 				resetDisplayedDataset();
+			}
+			
+			// do we add to wifiLCD panel
+			for (int j = 0; j < wifiLCDDisplayedChannel.length; j++) {
+				if (wifiLCDDisplayedChannel[j].contains( channel.getLogFileName() )){
+					gui.getWifiPanel().add(channel.getChannelPanel());
+				}
 			}
 		}
 

@@ -8,9 +8,7 @@ import probes.AbstractProbe;
 import com.pi4j.io.serial.SerialPortException;
 
 public class GeigerProbeSimulation extends AbstractProbe {
-	public static final int GEIGER_SERIAL_SPEED = 9600;
 	public DataChannel geigerChannel = new DataChannel("Backgound Radiation", "Backgound_Radiation");
-	private String inbuf = "";
 	 
 	/**
 	 * Geiger Counter connected to the serial port
@@ -18,6 +16,7 @@ public class GeigerProbeSimulation extends AbstractProbe {
 	 * @throws SerialPortException
 	 */
 	public GeigerProbeSimulation() {
+		geigerChannel.setUnit("µSv/h");
 		DataSimulationThread dataThread = new DataSimulationThread();
 		dataThread.start();
 	}
@@ -54,5 +53,4 @@ public class GeigerProbeSimulation extends AbstractProbe {
 		return null;
 	}
 
-	
 }
