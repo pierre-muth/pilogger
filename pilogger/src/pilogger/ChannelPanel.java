@@ -3,15 +3,21 @@ package pilogger;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.text.NumberFormat;
 
+import javax.swing.ImageIcon;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
+import resources.GetImage;
 import cern.jdve.Chart;
 import cern.jdve.Style;
 import cern.jdve.data.DefaultDataSet;
@@ -24,10 +30,11 @@ public class ChannelPanel extends JPanel {
 	private DataChannel channel;
 	private Color lineColor = new Color(255, 255, 255);
 	private Color filltColor = new Color(128, 128, 128);
-	private Style lineStyle = new Style(new BasicStroke(1.0f), lineColor, filltColor);
-	public static Font valueFont = new Font("Dialog", Font.BOLD, 30);
-	public static Font titleFont = new Font("Dialog", Font.PLAIN, 11);
-	public static Font minmaxFont = new Font("Dialog", Font.PLAIN, 15);
+	private Style lineStyle = new Style(new BasicStroke(1.1f), lineColor, filltColor);
+	public static Font valueFont = new Font("Dialog", Font.BOLD, 27);
+	public static Font unitFont = new Font("Dialog", Font.PLAIN, 27);
+	public static Font titleFont = new Font("Dialog", Font.PLAIN, 10);
+	public static Font minmaxFont = new Font("Dialog", Font.PLAIN, 12);
 	private final NumberFormat formatter = NumberFormat.getNumberInstance();
 	private DefaultDataSet dataSet;
 
@@ -44,6 +51,8 @@ public class ChannelPanel extends JPanel {
 		add(getInfoPanel());
 		formatter.setGroupingUsed(false);
 		formatter.setMaximumFractionDigits(2);
+		
+		setMinimumSize(new Dimension(320, 56));
 	}
 
 	public void setValue(final double value) {
@@ -61,7 +70,7 @@ public class ChannelPanel extends JPanel {
 	}
 
 	private JPanel infoPanel;
-	private JPanel getInfoPanel() {
+	private JPanel getInfoPanel_01() {
 		if (infoPanel == null){
 
 			infoPanel = new JPanel(new BorderLayout());
@@ -91,6 +100,38 @@ public class ChannelPanel extends JPanel {
 		return infoPanel;
 	}
 	
+	private JPanel getInfoPanel() {
+		if (infoPanel == null){
+
+			infoPanel = new JPanel(new GridBagLayout());
+			infoPanel.setBackground(Color.black);
+			GridBagConstraints c = new GridBagConstraints();
+
+			c.gridx = 0;
+			c.gridy = 0;
+			c.fill = GridBagConstraints.BOTH;
+			infoPanel.add(gettitleLabel(), c);
+
+			JPanel jpMinMax = new JPanel(new GridLayout(1, 2));
+			jpMinMax.setBackground(Color.black);
+			jpMinMax.add(getminLabel());
+			jpMinMax.add(getmaxLabel());
+			c.gridx = 0;
+			c.gridy = 1;
+			infoPanel.add(jpMinMax, c);
+
+			JPanel jpSouth = new JPanel(new BorderLayout(5, 0));
+			jpSouth.setBackground(Color.black);
+			jpSouth.add(getvalueLabel(), BorderLayout.CENTER);
+			jpSouth.add(getunitLabel(), BorderLayout.EAST);
+			c.gridx = 0;
+			c.gridy = 2;
+			c.weightx = 0.1;
+			c.weighty = 0.1;
+			infoPanel.add(jpSouth, c);
+		}
+		return infoPanel;
+	}
 	
 
 	private JLabel value;
@@ -100,7 +141,7 @@ public class ChannelPanel extends JPanel {
 			value.setFont(valueFont);
 			value.setBackground(Color.black);
 			value.setForeground(Color.white);
-			value.setHorizontalAlignment(SwingConstants.CENTER);
+			value.setHorizontalAlignment(SwingConstants.RIGHT);
 		}
 		return value;
 	}
@@ -112,7 +153,9 @@ public class ChannelPanel extends JPanel {
 			min.setFont(minmaxFont);
 			min.setBackground(Color.black);
 			min.setForeground(Color.white);
-			min.setHorizontalAlignment(SwingConstants.RIGHT);
+			min.setHorizontalAlignment(SwingConstants.LEFT);
+			min.setIcon(GetImage.getImageIcon(GetImage.ARROW_DOWN));
+			min.setHorizontalTextPosition(SwingConstants.RIGHT);
 		}
 		return min;
 	}
@@ -125,6 +168,8 @@ public class ChannelPanel extends JPanel {
 			max.setBackground(Color.black);
 			max.setForeground(Color.white);
 			max.setHorizontalAlignment(SwingConstants.RIGHT);
+			max.setIcon(GetImage.getImageIcon(GetImage.ARROW_UP));
+			max.setHorizontalTextPosition(SwingConstants.LEFT);
 		}
 		return max;
 	}
@@ -145,10 +190,10 @@ public class ChannelPanel extends JPanel {
 	private JLabel getunitLabel() {
 		if (unit == null){
 			unit = new JLabel(channel.getUnit());
-			unit.setFont(titleFont);
+			unit.setFont(unitFont);
 			unit.setBackground(Color.black);
 			unit.setForeground(Color.white);
-			unit.setHorizontalAlignment(SwingConstants.CENTER);
+			unit.setHorizontalAlignment(SwingConstants.RIGHT);
 		}
 		return unit;
 	}
@@ -172,7 +217,9 @@ public class ChannelPanel extends JPanel {
 			TimeStepsDefinition stepsDefinition = new TimeStepsDefinition();
 			chartSimple.getXScale().setStepsDefinition(stepsDefinition);
 
-			chartSimple.addRenderer(getAeraRenderer());			
+			chartSimple.addRenderer(getAeraRenderer());		
+			
+			chartSimple.setAntiAliasing(false);
 		}
 		return chartSimple;
 	}
@@ -204,6 +251,21 @@ public class ChannelPanel extends JPanel {
 			lineDataSource.addDataSet(dataSet);
 		} 
 		return lineDataSource;
+	}
+	
+	public static void main(String[] args) {
+		JFrame f = new JFrame("test");
+		final DataChannel channel = new DataChannel("Test Channel Panel", "Test_Channel_Panel");
+		channel.setUnit("Watt");
+		ChannelPanel panel = new ChannelPanel(channel);
+		panel.setPreferredSize(new Dimension(320, 60));
+		f.getContentPane().add(panel);
+        f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        f.setVisible(true);
+        f.pack();
+        
+		
+		
 	}
 
 }

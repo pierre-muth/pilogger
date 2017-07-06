@@ -9,6 +9,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Timer;
+import java.util.TimerTask;
 
 import javax.swing.JMenuItem;
 import javax.swing.SwingUtilities;
@@ -43,6 +44,7 @@ public class ProbeManager implements ActionListener {
 		this.gui = gui;
 		initTimeScaleMenu();
 		
+		// launch threads for online uploading
 		if (PiloggerLauncher.simulation) {
 			onlineFileLocalDirectory = "c:\\pilogger\\logs\\online\\";
 			configFileDirectory = "c:\\pilogger\\config\\";
@@ -52,16 +54,9 @@ public class ProbeManager implements ActionListener {
 				Timer timerMySQL = new Timer();
 				timerFTP.schedule(new UploadFTP(), 120000, MS_TO_UPLOAD_FTP);
 				timerMySQL.schedule(new UploadMySQL(this), 60000, (25*1000));
-				
-				try {
-					Thread wifiDisplayServerThread = new Thread(new WifiDisplay(gui.getWifiCard()));
-					wifiDisplayServerThread.start();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
 			}
 		}
-		
+
 		//read config for wifi LCD
 		String line;
 		String path = configFileDirectory + configWifiChannels;
@@ -70,10 +65,19 @@ public class ProbeManager implements ActionListener {
 				line = br.readLine();
 				wifiLCDDisplayedChannel[i] = line;
 			}
-			
 		} catch (IOException e) {
 			System.out.println("Error in "+configWifiChannels);
 		};
+
+		// configure remote LCD
+		try {
+			WifiDisplay wifiDisplay = new WifiDisplay(gui.getWifiCard());
+			Thread wifiDisplayServerThread = new Thread(wifiDisplay);
+			wifiDisplayServerThread.start();
+			addProbe(wifiDisplay);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
 		
 	}
 	
@@ -98,8 +102,8 @@ public class ProbeManager implements ActionListener {
 			item1.setBackground(Color.black);
 			item0.setForeground(Color.white);
 			item1.setForeground(Color.white);			
-			item0.setPreferredSize(new Dimension(150, 10));
-			item1.setPreferredSize(new Dimension(150, 10));
+			item0.setPreferredSize(new Dimension(150, 9));
+			item1.setPreferredSize(new Dimension(150, 9));
 			item0.setFont(PiloggerGUI.labelFont);
 			item1.setFont(PiloggerGUI.labelFont);
 			item0.addActionListener(this);
@@ -127,7 +131,7 @@ public class ProbeManager implements ActionListener {
 			// do we add to wifiLCD panel
 			for (int j = 0; j < wifiLCDDisplayedChannel.length; j++) {
 				if (wifiLCDDisplayedChannel[j].contains( channel.getLogFileName() )){
-					gui.getWifiPanel().add(channel.getChannelPanel());
+					gui.setChannelPanel(j, channel.getChannelPanel());
 				}
 			}
 		}

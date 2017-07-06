@@ -3,10 +3,13 @@ package probes;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import javax.swing.JComponent;
 
 import pilogger.DataChannel;
+import pilogger.PiloggerGUI;
 
 import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CDevice;
@@ -15,9 +18,10 @@ import com.pi4j.io.i2c.I2CDevice;
 public class I2Cprobe extends AbstractProbe{
 	private static final double MIN_TEMPERATURE = -39, MAX_TEMPERATURE = 65;
 	private static final double MIN_PRESSURE = 85000, MAX_PRESSURE = 105000;
-	
+
 	public static final int BMP085_I2C_ADDR   = 0x77;
 	public static final int HMC5983_I2C_ADDR  = 0x1E;
+	public static final int MCP3426_I2C_ADDR  = 0x68;
 
 	// Operating Mode (internal oversampling)
 	public static final int OSS     = 3;
@@ -56,7 +60,6 @@ public class I2Cprobe extends AbstractProbe{
 	public static final int TEMP_H		       = 0x31; // R
 	public static final int TEMP_L		       = 0x32; // R
 
-	private I2CDevice bmp085device;
 	private int cal_AC1 = 0;
 	private int cal_AC2 = 0;
 	private int cal_AC3 = 0;
@@ -69,14 +72,17 @@ public class I2Cprobe extends AbstractProbe{
 	private int cal_MC = 0;
 	private int cal_MD = 0;
 
+	private I2CDevice bmp085device;
 	private I2CDevice hmc5983device;
+	//	private I2CDevice mcp3426device;
 
 	private DataChannel pressureChannel = new DataChannel("Atmospheric Pressure", "Atmospheric_Pressure");
 	private DataChannel temperatureChannel = new DataChannel("Room Temperature", "Room_Temperature");
-	private DataChannel magXChannel = new DataChannel("Magnetic Field X", "Magnetic_X");
-	private DataChannel magYChannel = new DataChannel("Magnetic Field Y", "Magnetic_Y");
-	private DataChannel magZChannel = new DataChannel("Magnetic Field Z", "Magnetic_Z");
 	private DataChannel magSumChannel = new DataChannel("Magnetic Field Sum", "Magnetic_sum");
+	//	private DataChannel luxChannel = new DataChannel("Room Brightness", "Room_Brightness");
+	//	private DataChannel magXChannel = new DataChannel("Magnetic Field X", "Magnetic_X");
+	//	private DataChannel magYChannel = new DataChannel("Magnetic Field Y", "Magnetic_Y");
+	//	private DataChannel magZChannel = new DataChannel("Magnetic Field Z", "Magnetic_Z");
 
 	/**
 	 * BMP085 Pressure and Temperature probe 
@@ -86,11 +92,14 @@ public class I2Cprobe extends AbstractProbe{
 	 */
 	public I2Cprobe(I2CBus bus) throws IOException {
 		initDataChannels();
-		
+
 		bmp085device = bus.getDevice(BMP085_I2C_ADDR);
 		readBMP085CalibrationData();
-		
+
 		hmc5983device = bus.getDevice(HMC5983_I2C_ADDR);
+
+		//		mcp3426device = bus.getDevice(MCP3426_I2C_ADDR);
+		//		iniADC();
 
 		DataReaderThread dataReaderThread = new DataReaderThread();
 		dataReaderThread.start();
@@ -98,12 +107,14 @@ public class I2Cprobe extends AbstractProbe{
 
 	@Override
 	public DataChannel[] getChannels() {
-		return new DataChannel[]{pressureChannel, temperatureChannel, magXChannel, magYChannel, magZChannel, magSumChannel};
+		return new DataChannel[]{pressureChannel, temperatureChannel, magSumChannel}; //, magXChannel, magYChannel, magZChannel, magSumChannel};
 	}
-	
+
 	private void initDataChannels() {
 		temperatureChannel.setDataRange(6.0, 33.0);
 		pressureChannel.setDataRange(89000.0, 99000.0);
+		pressureChannel.setUnit("Pa");
+		temperatureChannel.setUnit("°C");
 	}
 
 	public void readBMP085CalibrationData() throws IOException {
@@ -119,6 +130,18 @@ public class I2Cprobe extends AbstractProbe{
 		cal_MC = readS16(CAL_MC);
 		cal_MD = readS16(CAL_MD);
 	}
+
+	//	private void iniADC() throws IOException {
+	//		// Select configuration command
+	//		// Continuous conversion mode, channel-1, 16-bit resolution
+	//		mcp3426device.write((byte)0x18);
+	//		try {
+	//			Thread.sleep(500);
+	//		} catch (InterruptedException e) {
+	//			e.printStackTrace();
+	//		}
+	//	}
+
 	private int readU16(int address) throws IOException{
 		int hibyte = bmp085device.read(address);
 		return (hibyte<<8)+bmp085device.read(address+1) ;
@@ -168,12 +191,14 @@ public class I2Cprobe extends AbstractProbe{
 	}
 
 	private class DataReaderThread extends Thread {
-		public static final int OVER_SAMPLING = 5;
+		public static final int OVER_SAMPLING = 8;
 		private double temperatureSum;
 		private double pressureSum;
 		private double magX, magY, magZ, magSum;
-		private int dataCount;
-
+		private int bmp085DataCount = 4;
+		private int magDataCount = 0;
+		//		private double adcSum;
+		//		private int adcDataCount;
 		public DataReaderThread() {
 		}
 
@@ -182,11 +207,14 @@ public class I2Cprobe extends AbstractProbe{
 			int rawTemperature;
 			int msb, lsb, xlsb;
 			int rawPressure;
+			double rawMagX, rawMagY, rawMagZ;			
 			int[] buffer;
-			double rawMagX, rawMagY, rawMagZ;
 			ByteBuffer bb;
 
+			//			short rawADC;
 			while (true) {
+
+				// pressure & temp
 				try {
 					bmp085device.write(CONTROL, READTEMPCMD);
 					sleep(50);
@@ -204,11 +232,56 @@ public class I2Cprobe extends AbstractProbe{
 					temperatureSum += data.temperature;
 					pressureSum += data.pressure;
 
+					sleep(200); 
+
+					bmp085DataCount++;
+					if (bmp085DataCount >= OVER_SAMPLING) {
+						pressureChannel.newData(pressureSum/bmp085DataCount);
+						temperatureChannel.newData(temperatureSum/bmp085DataCount);
+						temperatureSum = 0;
+						pressureSum = 0;
+						bmp085DataCount = 0;
+					}
+				} catch (Exception e) {
+					System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+": i2c BMP085 error");
+				}
+
+				// brightness
+				//				try {
+				//					//read previous conversion
+				//					buf = new byte[3];
+				//					mcp3426device.read(0x00, buf, 0, 3);
+				//
+				//					// Convert the data to 16-bits
+				//					bb = ByteBuffer.allocate(2);
+				//					bb.order(ByteOrder.BIG_ENDIAN);
+				//					bb.put((byte) (buf[0] & 0xFF));
+				//					bb.put((byte) (buf[1] & 0xFF));
+				//					rawADC = bb.getShort(0);
+				//					
+				//					// force new conversion (should not be needed)
+				//					mcp3426device.write((byte)0x18);
+				//					
+				//					// sum
+				//					adcSum += rawADC;
+				//					sleep(200); 
+				//					
+				//					adcDataCount++;
+				//					if (adcDataCount >= OVER_SAMPLING) {
+				//						luxChannel.newData(adcSum/OVER_SAMPLING);
+				//						adcSum = 0;
+				//						adcDataCount = 0;
+				//					}
+				//
+				//				} catch (Exception e) {
+				//					System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+": i2c ADC error");
+				//				}
+
+				// mag
+				try {
 					hmc5983device.write(CONFIG_A, (byte)0b11110000 );
 					hmc5983device.write(CONFIG_B, (byte)0b00000000 );
 					hmc5983device.write(MODE	, (byte)0b00000000 );
-
-					sleep(200); 
 
 					buffer = new int[6];
 					for (int i = 0; i < buffer.length; i++) {
@@ -222,30 +295,25 @@ public class I2Cprobe extends AbstractProbe{
 					}			
 
 					rawMagX = (bb.getShort(0)*0.073);
-					magX += rawMagX;
 					rawMagY = (bb.getShort(2)*0.073);					
-					magY += rawMagY;
 					rawMagZ = (bb.getShort(4)*0.073);	
-					magZ += rawMagZ;
+					//				magY += rawMagY;
+					//				magX += rawMagX;
+					//				magZ += rawMagZ;
 
 					magSum += Math.sqrt(rawMagX*rawMagX + rawMagY*rawMagY + rawMagZ*rawMagZ);
 
-					dataCount++;
-					if (dataCount >= OVER_SAMPLING) {
-						pressureChannel.newData(pressureSum/OVER_SAMPLING);
-						temperatureChannel.newData(temperatureSum/OVER_SAMPLING);
-						magXChannel.newData(magX/OVER_SAMPLING);
-						magYChannel.newData(magY/OVER_SAMPLING);
-						magZChannel.newData(magZ/OVER_SAMPLING);
-						magSumChannel.newData(magSum/OVER_SAMPLING);
-
-						temperatureSum = 0;
-						pressureSum = 0;
+					//				magXChannel.newData(magX/OVER_SAMPLING);
+					//				magYChannel.newData(magY/OVER_SAMPLING);
+					//				magZChannel.newData(magZ/OVER_SAMPLING);
+					magDataCount++;
+					if (magDataCount >= OVER_SAMPLING) {
+						magSumChannel.newData(magSum/bmp085DataCount);
+						magDataCount = 0;
 						magX = 0; magY = 0; magZ = 0; magSum = 0;
-						dataCount = 0;
 					}
 				} catch (Exception e) {
-					e.printStackTrace();
+					System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+": i2c Mag error");
 				}
 			}
 		}

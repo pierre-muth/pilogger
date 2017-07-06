@@ -24,6 +24,7 @@ public class GeigerProbe extends AbstractProbe implements SerialDataListener {
 		// open the default serial port provided on the GPIO header
 		serial.open(Serial.DEFAULT_COM_PORT, GEIGER_SERIAL_SPEED);
 		serial.addListener(this);
+		geigerChannel.setUnit("µSv/h");
 	}
 
 	@Override

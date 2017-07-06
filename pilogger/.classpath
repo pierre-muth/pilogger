@@ -29,5 +29,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="lib/jdataviewer_1.6.5.jar"/>
+	<classpathentry kind="lib" path="lib/Dbw.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -1,5 +1,6 @@
 package pilogger;
 
+import java.awt.AWTException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -14,8 +15,8 @@ import org.apache.commons.net.ftp.FTPReply;
 
 public class UploadFTP extends TimerTask{
 	private static final String HOSTNAME = "ftpperso.free.fr";
-	private static final String LOGIN = "xxx";
-	private static final String PWD = "xxx";
+	private static final String LOGIN = "***";
+	private static final String PWD = "***";
 
 	public static synchronized boolean store(File localFile) {
 		FTPClient ftp = new FTPClient();
@@ -52,6 +53,13 @@ public class UploadFTP extends TimerTask{
 	
 	@Override
 	public void run() {
+//		try {
+//			ScreenCapture.capture(ProbeManager.onlineFileLocalDirectory);
+//		} catch (IOException | AWTException e1) {
+//			System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+
+//					": Fail to capture screen");
+//		}
+		
 		File directory = new File(ProbeManager.onlineFileLocalDirectory);
 		File[] files = directory.listFiles();
 		int i = 0;

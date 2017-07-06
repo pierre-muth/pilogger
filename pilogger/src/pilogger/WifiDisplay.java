@@ -3,6 +3,7 @@ package pilogger;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
+import java.awt.image.WritableRaster;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -11,25 +12,69 @@ import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import javax.imageio.ImageIO;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
 
-public class WifiDisplay implements Runnable {
+import probes.AbstractProbe;
+
+public class WifiDisplay extends AbstractProbe implements Runnable {
 	public static final String CAPTURE_FILENAME = "pilogger320x240.png";
+	public static final String DATE_PATERN = "EEEE d MMMM 'at' HH:mm:ss";
 	public static final int WIDTH = 320;
 	public static final int HEIGHT = 240;
-	private JPanel gui;
+	public DataChannel wifiLCD01VCCChannel = new DataChannel("Wifi LCD01 VCC", "LCD1_VCC");
+	private WifiDisplayGUI gui;
 	private ServerSocket serverServer;
 	private byte[] byteToSend;
 	private int[] pixList;
+	private int alternate = 0;		// Sharp memory LCD Com invertion
 
-	public WifiDisplay(JPanel gui) throws IOException {
+	public static final int[][] thMap1616 = {
+		{   0,192, 48,240, 12,204, 60,252,  3,195, 51,243, 15,207, 63,255 },
+		{ 128, 64,176,112,140, 76,188,124,131, 67,179,115,143, 79,191,127 },
+		{  32,224, 16,208, 44,236, 28,220, 35,227, 19,211, 47,239, 31,223 },
+		{ 160, 96,144, 80,172,108,156, 92,163, 99,147, 83,175,111,159, 95 },
+		{   8,200, 56,248,  4,196, 52,244, 11,203, 59,251,  7,199, 55,247 },
+		{ 136, 72,184,120,132, 68,180,116,139, 75,187,123,135, 71,183,119 },
+		{  40,232, 24,216, 36,228, 20,212, 43,235, 27,219, 39,231, 23,215 },
+		{ 168,104,152, 88,164,100,148, 84,171,107,155, 91,167,103,151, 87 },
+		{   2,194, 50,242, 14,206, 62,254,  1,193, 49,241, 13,205, 61,253 },
+		{ 130, 66,178,114,142, 78,190,126,129, 65,177,113,141, 77,189,125 },
+		{  34,226, 18,210, 46,238, 30,222, 33,225, 17,209, 45,237, 29,221 },
+		{ 162, 98,146, 82,174,110,158, 94,161, 97,145, 81,173,109,157, 93 },
+		{  10,202, 58,250,  6,198, 54,246,  9,201, 57,249,  5,197, 53,245 },
+		{ 138, 74,186,122,134, 70,182,118,137, 73,185,121,133, 69,181,117 },
+		{  42,234, 26,218, 38,230, 22,214, 41,233, 25,217, 37,229, 21,213 },
+		{ 170,106,154, 90,166,102,150, 86,169,105,153, 89,165,101,149, 85 }
+	};
+	
+	public static final int[][] thMap44 = {{1, 9, 3, 11},{13, 5, 15, 7},{4, 12, 2, 10},{16, 8, 14, 6}};
+
+	public WifiDisplay(WifiDisplayGUI gui) throws IOException {
 		this.gui = gui;
 		serverServer = new ServerSocket(9999);
+		
+		wifiLCD01VCCChannel.setUnit("mV");
+		
+		// for debug
+		if (PiloggerLauncher.simulation) {
+			Timer t = new Timer();
+			TimerTask tt = new TimerTask() {
+				@Override
+				public void run() {
+					capture(false);
+				}
+			};
+			t.schedule(tt, 1000, 5000);
+		}
 	}
-
+	
 	@Override
 	public void run() {
 
@@ -46,10 +91,16 @@ public class WifiDisplay implements Runnable {
 
 				while (true) {
 					line = inputStream.readLine();
-					if (line.contains("LCD")) {
+					if (line != null && line.contains("LCD")) {
 						System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+
-								" Wifi LCD requested an image");
-						outputStream.write(capture());
+								" Wifi LCD requested an image: "+line);
+						outputStream.write(capture(isNightTime()));
+						alternate = alternate == 0 ? 1 : 0;
+						String[] split = line.split(" ");
+						if (split.length > 0) {
+							int vcc = Integer.parseInt( split[1] );
+							wifiLCD01VCCChannel.newData(vcc);
+						}
 						break;
 					}
 				}
@@ -57,34 +108,49 @@ public class WifiDisplay implements Runnable {
 				clientSocket.close();
 			}
 		} catch (IOException e) {
+			System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+
+					" Error WifiDisplay: ");
 			e.printStackTrace();
 		}
 
 	}
 	
-	private byte[] capture() {
+	private boolean isNightTime() {
+		int hourOfDay = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+		return ( hourOfDay >= 2 && hourOfDay < 4 );
+	}
+
+	private byte[] capture(boolean inverted) {
+		// set the date of capture
+		gui.getJlWifiTime().setText(new SimpleDateFormat(WifiDisplay.DATE_PATERN).format(new Date()));
 		//capture the jpanel		
 		final BufferedImage sourceImage = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_BYTE_GRAY);
 		Graphics g = sourceImage.createGraphics();
 		gui.paint(g);
 		g.dispose();
 		byte[] pixels = ((DataBufferByte) sourceImage.getRaster().getDataBuffer()).getData();
-		
-		
-		File outputfile = new File(ProbeManager.onlineFileLocalDirectory+CAPTURE_FILENAME);
-	    try {
-			ImageIO.write(sourceImage, "png", outputfile);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
+
+		// singed byte to 'unsigned' int
 		pixList = new int[sourceImage.getWidth()*sourceImage.getHeight()];
 		for (int i = 0; i < pixList.length; i++) {
 			pixList[i] = pixels[i] < 0 ? 256 + pixels[i] : pixels[i];
 		}
-		
+
 		//get dithered image
-		int[] pixDithered = getDitheredMonochrom();
+//		int[] pixDithered = getDitheredMonochromErrDiff();
+		int[] pixDithered = getDitheredMonochromeOrdered();
+		
+		// save to file
+		File outputfile = new File(ProbeManager.onlineFileLocalDirectory+CAPTURE_FILENAME);
+		try {
+			BufferedImage destImage = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_BYTE_GRAY);
+			WritableRaster wr = destImage.getData().createCompatibleWritableRaster();
+			wr.setPixels(0, 0, WIDTH, HEIGHT, pixDithered);
+			destImage.setData(wr);
+			ImageIO.write(destImage, "png", outputfile);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
 		//generate image with pixel bit in bytes
 		byte[] pixBytes = new byte[(WIDTH/8) * HEIGHT ];
@@ -96,9 +162,9 @@ public class WifiDisplay implements Runnable {
 				mask = 0b10000000 >>> j;
 				x = ((i%(WIDTH/8)*8 ) +j)  ;
 				y = i / (WIDTH/8);
-				if ( pixDithered[x+(y*WIDTH)] == 0 ) {
+				if ( (pixDithered[x+(y*WIDTH)] == 0 && !inverted) || (pixDithered[x+(y*WIDTH)] > 0 && inverted) )
 					pixBytes[i] = (byte) (pixBytes[i] | mask);
-				}
+						
 			}
 		}
 
@@ -107,7 +173,7 @@ public class WifiDisplay implements Runnable {
 		int col = 0;
 		for (int i = 0; i < byteToSend.length; i++) {
 			if (i == 0) {
-				byteToSend[i] = (byte) 0x80;
+				byteToSend[i] = (byte) (0x80 + (alternate*0x40));
 			} else if (i%42 == 0) {
 				byteToSend[i] = (byte) 0x00;  //dummy byte
 				line++;
@@ -119,11 +185,26 @@ public class WifiDisplay implements Runnable {
 				col++;
 			}
 		}
-		
+
 		return byteToSend;
 	}
-	
-	public int[] getDitheredMonochrom() {
+
+	public int[] getDitheredMonochromeOrdered() {
+		int[] pixDithered = new int[pixList.length];
+		int pixel, x, y;
+		
+		for (int i=0; i<pixList.length; i++) {
+			x = i%WIDTH;
+			y = i/WIDTH;
+			if (pixList[i]<85) pixDithered[i] = 0;
+			if (pixList[i]>=85 && pixList[i]<170) pixDithered[i] = 255 * ((x+(y%2))%2);
+			if (pixList[i]>= 170) pixDithered[i] = 255;
+			
+		}
+		return pixDithered;
+	}
+
+	public int[] getDitheredMonochromErrDiff() {
 		int pixelWithError, pixelDithered, error;
 		boolean notLeft, notRight, notBottom;
 		int[] pixDithered = new int[pixList.length];
@@ -179,6 +260,16 @@ public class WifiDisplay implements Runnable {
 		}
 
 		return pixDithered;
+	}
+
+	@Override
+	public DataChannel[] getChannels() {
+		return new DataChannel[] {wifiLCD01VCCChannel};
+	}
+
+	@Override
+	public JComponent[] getGuiComponents() {
+		return null;
 	}
 
 

@@ -26,6 +26,9 @@ package tests;
  * #L%
  */
 
+import pilogger.Utils;
+import hardware.NRF24L01;
+
 import com.pi4j.io.gpio.GpioController;
 import com.pi4j.io.gpio.GpioFactory;
 import com.pi4j.io.gpio.GpioPinDigitalInput;
@@ -36,17 +39,16 @@ import com.pi4j.io.gpio.event.GpioPinDigitalStateChangeEvent;
 import com.pi4j.io.gpio.event.GpioPinListenerDigital;
 import com.pi4j.wiringpi.Spi;
 
-public class SPITest {
+public class SPITest implements GpioPinListenerDigital, Runnable{
 
 	private static int rx_id = 0;
-
-	public static void main(String args[]) throws InterruptedException {
-		final byte packet[] = new byte[24];
-		final GpioController gpio = GpioFactory.getInstance();
-		final GpioPinDigitalOutput CE = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_01);
-		final GpioPinDigitalInput IRQ = gpio.provisionDigitalInputPin(RaspiPin.GPIO_04, PinPullResistance.PULL_DOWN);
-
-		System.out.println("<--Pi4J--> SPI test program ");
+	private NRF24L01 nRF; 
+	
+	public SPITest() throws InterruptedException {
+		byte packet[] = new byte[32];
+		
+		
+		System.out.println("nRF24l01 SPI test program ");
 
 		// setup SPI for communication
 		int fd = Spi.wiringPiSPISetup(0, 10000000);
@@ -57,108 +59,77 @@ public class SPITest {
 			System.out.println(" ==>> SPI SETUP SUCCES");
 		}
 
+		GpioController gpio = GpioFactory.getInstance();
+		GpioPinDigitalOutput CE = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_01);
+//		final GpioPinDigitalOutput CSN = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_10);
+		GpioPinDigitalInput IRQ = gpio.provisionDigitalInputPin(RaspiPin.GPIO_04, PinPullResistance.PULL_DOWN);
 		
-		CE.low();		// disable radio
+		CE.low();
+//		CSN.high();
+		
+		// init nRF
+		nRF = new NRF24L01();
+		nRF.initNRF24L01();		
+		
+		
 		Thread.sleep(100);
+		CE.high(); // enable reception
 		
-		// write config register : all IRQ, enable 2bytes CRC, Power UP, Primary RX
-		packet[0] = 0b00100000;
-		packet[1] = 0x0F;
-		Spi.wiringPiSPIDataRW(0, packet, 2);
-		System.out.println("[RX] " + bytesToHex(packet));
-
-		// read Config Register
-		packet[0] = 0b00000000;
-		packet[1] = 0x00;
-		Spi.wiringPiSPIDataRW(0, packet, 2);
-		System.out.println("[RX] " + bytesToHex(packet));
+//		System.out.println("irq: "+nRF.hal_nrf_read_rx_pl_w());
 		
-		// write Feature reg, enable dynamic payload
-		packet[0] = 0b00111101;
-		packet[1] = 0b00000100;
-		Spi.wiringPiSPIDataRW(0, packet, 2);
-		System.out.println("[RX] " + bytesToHex(packet));
+		// nRF listening
+		IRQ.addListener(this);
 		
-		// write RF setup : 250Kbps
-		packet[0] = 0b00100110;
-		packet[1] = 0b00100110;
-		Spi.wiringPiSPIDataRW(0, packet, 2);
-		System.out.println("[RX] " + bytesToHex(packet));
-		
-		// write EN_RXADDR : enable RX address pipe 0 & 1 & 2 
-		packet[0] = 0b00100010;
-		packet[1] = 0b00000111;
-		Spi.wiringPiSPIDataRW(0, packet, 2);
-		System.out.println("[RX] " + bytesToHex(packet));
-
-		// write DYNPL, enable dynamic payload for pipe0 & 1 & 2
-		packet[0] = 0b00111100;
-		packet[1] = 0b00000111;
-		Spi.wiringPiSPIDataRW(0, packet, 2);
-		System.out.println("[RX] " + bytesToHex(packet));
-		
-		//Flush RX FIFO
-		packet[0] = (byte) 0xE2;
-		Spi.wiringPiSPIDataRW(0, packet, 1);
-		System.out.println("[RX] " + bytesToHex(packet));
-		
-		// write Status Register : clear interupts
-		packet[0] = 0b00100111;
-		packet[1] = 0x70;
-		Spi.wiringPiSPIDataRW(0, packet, 2);
-
-		Thread.sleep(100);
-		CE.high();
-		
-		IRQ.addListener(new GpioPinListenerDigital() {
-			@Override
-			public void handleGpioPinDigitalStateChangeEvent(GpioPinDigitalStateChangeEvent event) {
-
-				if (event.getState().isHigh()) return;
-				
-				System.out.println(rx_id++);
-				clearArray(packet);
-				
-				// read R_RX_PL_WID Register
-				packet[0] = 0b01100000;
-				packet[1] = 0x00;
-				Spi.wiringPiSPIDataRW(0, packet, 2);
-				System.out.println("[RX] " + bytesToHex(packet));
-				
-				//read RX 
-				int payloadLenght = packet[1];
-				packet[0] = 0b01100001;
-				Spi.wiringPiSPIDataRW(0, packet, payloadLenght+1);
-				System.out.println("[RX] " + bytesToHex(packet));
-
-				//clear status
-				packet[0] = 0b00100111;
-				packet[1] = 0x70;
-				Spi.wiringPiSPIDataRW(0, packet, 2);
-			}
-
-		});
-		
+	}
+	
+	@Override
+	public void run() {
 		while(true) {
-			Thread.sleep(1000);
-//			Spi.wiringPiSPIDataRW(0, packet, 1);
-//			System.out.println("[RX] " + bytesToHex(packet));
-			
-//			if ((packet[0] & 0x0F) == 0) {
-//				packet[0] = 0b01100001;
-//				Spi.wiringPiSPIDataRW(0, packet, 7);
-//				System.out.println("[RX] " + bytesToHex(packet));
-//				System.out.println(rx_id++ +" " + new String(packet));
-//				
-//				//clear status
-//				packet[0] = 0b00100111;
-//				packet[1] = 0x70;
-//				Spi.wiringPiSPIDataRW(0, packet, 2);
-//				
-//				Spi.wiringPiSPIDataRW(0, packet, 1);
-//				System.out.println("[RX] " + bytesToHex(packet));
-//			}
+			try {
+				Thread.sleep(10000);
+				nRF.hal_nrf_get_clear_irq_flags();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
+	}  
+	
+	@Override
+	public void handleGpioPinDigitalStateChangeEvent(GpioPinDigitalStateChangeEvent event) {
+		byte packet[] = new byte[32];
+		if (event.getState().isHigh()) return;
+		
+		packet = nRF.hal_nrf_read_RX_PLOAD();
+		nRF.hal_nrf_flush_rx();
+		nRF.hal_nrf_flush_tx();
+		nRF.hal_nrf_get_clear_irq_flags();
+		
+		System.out.println(rx_id++ +">"+Utils.bytesToHex(packet));
+		clearArray(packet);
+		
+		byte[] payload = {(byte) 0xDE, (byte) 0xBE, (byte) 0xFF};
+		nRF.hal_nrf_write_ACK_PAYLOAD(payload, (byte) 0x00);
+		
+//		// read R_RX_PL_WID Register
+//		packet[0] = 0b01100000;
+//		packet[1] = 0x00;
+//		Spi.wiringPiSPIDataRW(0, packet, 2);
+//		System.out.println("[RX] " + bytesToHex(packet));
+//		
+//		//read RX 
+//		int payloadLenght = packet[1];
+//		packet[0] = 0b01100001;
+//		Spi.wiringPiSPIDataRW(0, packet, payloadLenght+1);
+//		System.out.println("[RX] " + bytesToHex(packet));
+//
+//		//clear status
+//		packet[0] = 0b00100111;
+//		packet[1] = 0x70;
+//		Spi.wiringPiSPIDataRW(0, packet, 2);
+	}
+
+	public static void main(String args[]) throws InterruptedException {
+		new Thread( new SPITest() ).start();
 	}
 
 	private static void clearArray(byte[] bytes) {
@@ -177,5 +148,6 @@ public class SPITest {
 			hexChars[j * 2 + 1] = hexArray[v & 0x0F];
 		}
 		return new String(hexChars);
-	}    
+	}
+
 }
