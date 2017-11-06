@@ -60,7 +60,7 @@ public class UploadFTP extends TimerTask{
 //					": Fail to capture screen");
 //		}
 		
-		File directory = new File(ProbeManager.onlineFileLocalDirectory);
+		File directory = new File(ProbeManagerSwing.onlineFileLocalDirectory);
 		File[] files = directory.listFiles();
 		int i = 0;
 		try {

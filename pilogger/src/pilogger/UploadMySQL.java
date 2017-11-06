@@ -18,9 +18,9 @@ public class UploadMySQL extends TimerTask {
 
 	public static boolean DEBUG = false;
 
-	private ProbeManager manager;
+	private ProbeManagerSwing manager;
 
-	public UploadMySQL(ProbeManager manager) {
+	public UploadMySQL(ProbeManagerSwing manager) {
 		this.manager = manager;
 	}
 

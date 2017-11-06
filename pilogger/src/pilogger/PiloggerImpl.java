@@ -2,17 +2,6 @@ package pilogger;
 
 import java.io.IOException;
 
-import javax.swing.JPanel;
-
-import probes.I2Cprobe;
-import probes.GeigerProbe;
-import probes.SystemProbe;
-import probes.WirelessProbe;
-import tests.BMP085probeSimulation;
-import tests.GeigerProbeSimulation;
-import tests.PowerProbeSimulation;
-import cern.jdve.data.DefaultDataSet;
-
 import com.pi4j.io.gpio.GpioController;
 import com.pi4j.io.gpio.GpioFactory;
 import com.pi4j.io.i2c.I2CBus;
@@ -22,6 +11,14 @@ import com.pi4j.io.serial.SerialFactory;
 import com.pi4j.io.serial.SerialPortException;
 import com.pi4j.wiringpi.Spi;
 
+import probes.GeigerProbe;
+import probes.I2Cprobe;
+import probes.SystemProbe;
+import probes.WirelessProbe;
+import tests.BMP085probeSimulation;
+import tests.GeigerProbeSimulation;
+import tests.PowerProbeSimulation;
+
 public class PiloggerImpl {
 	private I2Cprobe bmp085Probe;
     private GeigerProbe geigerCounter;
@@ -29,13 +26,20 @@ public class PiloggerImpl {
     private WirelessProbe wirelessProbe;
     private ProbeManager probeManager;
     
+    public PiloggerImpl() {
+    	probeManager = new ProbeManagerHeadLess();
+    	
+    	initI2CandBMP085probe();
+    	initSystemProbe();
+    }
+    
     /**
      * Implementation of the Pilogger application GUI
      * Initialize links and Probes
      */
     public PiloggerImpl(PiloggerGUI gui) {
     	
-    	probeManager = new ProbeManager(gui);
+    	probeManager = new ProbeManagerSwing(gui);
     	
     	if (PiloggerLauncher.simulation) {
     		probeManager.addProbe(new BMP085probeSimulation());
@@ -43,9 +47,9 @@ public class PiloggerImpl {
     		probeManager.addProbe(new PowerProbeSimulation());
     	} else {
     		initI2CandBMP085probe();
-    		initComAndGeigerProbe(); 
+//    		initComAndGeigerProbe(); 
     		initSystemProbe();
-    		initSPIandWirelessProbe();
+//    		initSPIandWirelessProbe();
     	}
     	
     } 

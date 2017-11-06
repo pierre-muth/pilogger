@@ -77,12 +77,12 @@ public class I2Cprobe extends AbstractProbe{
 	//	private I2CDevice mcp3426device;
 
 	private DataChannel pressureChannel = new DataChannel("Atmospheric Pressure", "Atmospheric_Pressure");
-	private DataChannel temperatureChannel = new DataChannel("Room Temperature", "Room_Temperature");
+	private DataChannel temperatureChannel = new DataChannel("Temperature", "Temperature");
 	private DataChannel magSumChannel = new DataChannel("Magnetic Field Sum", "Magnetic_sum");
+	private DataChannel magXChannel = new DataChannel("Magnetic Field X", "Magnetic_X");
+	private DataChannel magYChannel = new DataChannel("Magnetic Field Y", "Magnetic_Y");
+	private DataChannel magZChannel = new DataChannel("Magnetic Field Z", "Magnetic_Z");
 	//	private DataChannel luxChannel = new DataChannel("Room Brightness", "Room_Brightness");
-	//	private DataChannel magXChannel = new DataChannel("Magnetic Field X", "Magnetic_X");
-	//	private DataChannel magYChannel = new DataChannel("Magnetic Field Y", "Magnetic_Y");
-	//	private DataChannel magZChannel = new DataChannel("Magnetic Field Z", "Magnetic_Z");
 
 	/**
 	 * BMP085 Pressure and Temperature probe 
@@ -107,12 +107,12 @@ public class I2Cprobe extends AbstractProbe{
 
 	@Override
 	public DataChannel[] getChannels() {
-		return new DataChannel[]{pressureChannel, temperatureChannel, magSumChannel}; //, magXChannel, magYChannel, magZChannel, magSumChannel};
+		return new DataChannel[]{pressureChannel, temperatureChannel, magSumChannel, magXChannel, magYChannel, magZChannel, magSumChannel};
 	}
 
 	private void initDataChannels() {
-		temperatureChannel.setDataRange(6.0, 33.0);
-		pressureChannel.setDataRange(89000.0, 99000.0);
+		temperatureChannel.setDataRange(6.0, 45.0);
+		pressureChannel.setDataRange(89000.0, 105000.0);
 		pressureChannel.setUnit("Pa");
 		temperatureChannel.setUnit("°C");
 	}
@@ -246,6 +246,46 @@ public class I2Cprobe extends AbstractProbe{
 					System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+": i2c BMP085 error");
 				}
 
+
+				// mag
+				try {
+					hmc5983device.write(CONFIG_A, (byte)0b11110000 );
+					hmc5983device.write(CONFIG_B, (byte)0b00000000 );
+					hmc5983device.write(MODE	, (byte)0b00000000 );
+
+					buffer = new int[6];
+					for (int i = 0; i < buffer.length; i++) {
+						buffer[i] = hmc5983device.read(i+3);
+					}
+
+					bb = ByteBuffer.allocate(6);
+					bb.order(ByteOrder.BIG_ENDIAN);
+					for (int i = 0; i < 6; i++) {
+						bb.put((byte) (buffer[i] & 0xFF));
+					}			
+
+					rawMagX = (bb.getShort(0)*0.073);
+					rawMagY = (bb.getShort(2)*0.073);					
+					rawMagZ = (bb.getShort(4)*0.073);	
+					magY += rawMagY;
+					magX += rawMagX;
+					magZ += rawMagZ;
+
+					magSum += Math.sqrt(rawMagX*rawMagX + rawMagY*rawMagY + rawMagZ*rawMagZ);
+
+					magDataCount++;
+
+					if (magDataCount >= OVER_SAMPLING) {
+						magXChannel.newData(magX/OVER_SAMPLING);
+						magYChannel.newData(magY/OVER_SAMPLING);
+						magZChannel.newData(magZ/OVER_SAMPLING);
+						magSumChannel.newData(magSum/magDataCount);
+						magDataCount = 0;
+						magX = 0; magY = 0; magZ = 0; magSum = 0;
+					}
+				} catch (Exception e) {
+					System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+": i2c Mag error");
+				}
 				// brightness
 				//				try {
 				//					//read previous conversion
@@ -276,45 +316,6 @@ public class I2Cprobe extends AbstractProbe{
 				//				} catch (Exception e) {
 				//					System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+": i2c ADC error");
 				//				}
-
-				// mag
-				try {
-					hmc5983device.write(CONFIG_A, (byte)0b11110000 );
-					hmc5983device.write(CONFIG_B, (byte)0b00000000 );
-					hmc5983device.write(MODE	, (byte)0b00000000 );
-
-					buffer = new int[6];
-					for (int i = 0; i < buffer.length; i++) {
-						buffer[i] = hmc5983device.read(i+3);
-					}
-
-					bb = ByteBuffer.allocate(6);
-					bb.order(ByteOrder.BIG_ENDIAN);
-					for (int i = 0; i < 6; i++) {
-						bb.put((byte) (buffer[i] & 0xFF));
-					}			
-
-					rawMagX = (bb.getShort(0)*0.073);
-					rawMagY = (bb.getShort(2)*0.073);					
-					rawMagZ = (bb.getShort(4)*0.073);	
-					//				magY += rawMagY;
-					//				magX += rawMagX;
-					//				magZ += rawMagZ;
-
-					magSum += Math.sqrt(rawMagX*rawMagX + rawMagY*rawMagY + rawMagZ*rawMagZ);
-
-					//				magXChannel.newData(magX/OVER_SAMPLING);
-					//				magYChannel.newData(magY/OVER_SAMPLING);
-					//				magZChannel.newData(magZ/OVER_SAMPLING);
-					magDataCount++;
-					if (magDataCount >= OVER_SAMPLING) {
-						magSumChannel.newData(magSum/bmp085DataCount);
-						magDataCount = 0;
-						magX = 0; magY = 0; magZ = 0; magSum = 0;
-					}
-				} catch (Exception e) {
-					System.out.println(new SimpleDateFormat(PiloggerGUI.DATE_PATERN).format(new Date())+": i2c Mag error");
-				}
 			}
 		}
 

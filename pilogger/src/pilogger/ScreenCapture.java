@@ -29,7 +29,7 @@ public class ScreenCapture extends TimerTask{
 		Graphics g = sourceImage.createGraphics();
 		GUI.paint(g);
 		g.dispose();
-		File outputfile = new File(ProbeManager.onlineFileLocalDirectory+CAPTURE_FILENAME);
+		File outputfile = new File(ProbeManagerSwing.onlineFileLocalDirectory+CAPTURE_FILENAME);
 	    ImageIO.write(sourceImage, "png", outputfile);
 	}
 

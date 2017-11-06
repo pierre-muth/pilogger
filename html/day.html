@@ -1,0 +1,137 @@
+<html>
+  <head>
+  <title>-={ Pilogger  :: Day data }=-</title>
+    <script src="https://www.google.com/jsapi"></script>
+    <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+   	<script src="jquery.csv-0.71.js"></script>
+    
+    <script>
+      google.load("visualization", "1", {packages:["corechart"]});
+      google.setOnLoadCallback(drawChart);
+	  
+	  function drawChart(){
+	  	
+		drawChartFromCSV("Outside_TemperatureDay.csv" ,'chart_1', "°C");
+		drawChartFromCSV("Atmospheric_PressureDay.csv" ,'chart_2', "Pa");
+		drawChartFromCSV("Backgound_RadiationDay.csv" ,'chart_3', "µSv/h");
+		drawChartFromCSV("Count_per_secondDay.csv" ,'chart_4', "Count/s");
+		drawChartFromCSV("Outside_LightDay.csv" ,'chart_5', "mV");
+		drawChartFromCSV("Room_TemperatureDay.csv" ,'chart_6', "°C");
+		drawChartFromCSV("Upstairs_TemperatureDay.csv" ,'chart_7', "°C");
+		drawChartFromCSV("inst_power_consDay.csv", 'chart_8', "Watt");
+		drawChartFromCSV("Heating_ExhaustDay.csv" ,'chart_9', "°C");
+		drawChartFromCSV("Hot_Water_OutDay.csv" ,'chart_10', "°C");
+		drawChartFromCSV("Cold_Water_InDay.csv" ,'chart_11', "°C");
+		drawChartFromCSV("Heating_ReturnDay.csv" ,'chart_12', "°C");
+		drawChartFromCSV("Cellar_temperatureDay.csv" ,'chart_13', "°C");
+		drawChartFromCSV("Outside_BatteryDay.csv" ,'chart_14', "Volt");
+		drawChartFromCSV("Upstairs_BatteryDay.csv" ,'chart_15', "Volt");
+		drawChartFromCSV("Magnetic_XDay.csv" ,'chart_16', "µT");
+		drawChartFromCSV("Magnetic_YDay.csv" ,'chart_17', "µT");
+		drawChartFromCSV("Magnetic_ZDay.csv" ,'chart_18', "µT");
+		drawChartFromCSV("Magnetic_sumDay.csv" ,'chart_19', "µT");
+		drawChartFromCSV("System_LoadDay.csv" ,'chart_20', "a.u.");
+		
+		setTimeout('drawChart()', 300000); 
+	  }
+	  
+	  function drawChartFromCSV(filename, elementId, verticalUnit){
+	   // grab the CSV
+         $.get(filename, function(csvString) {
+            // transform the CSV string into a 2-dimensional array
+            var arrayData = $.csv.toArrays(csvString, {onParseValue: $.csv.hooks.castToScalar});
+        
+			var data = new google.visualization.DataTable();
+			data.addColumn('datetime', 'Date');
+			data.addColumn('number', 'Min');
+			data.addColumn('number', 'Average');
+			data.addColumn('number', 'Max');
+			data.addColumn('number', 'Max');
+			
+			for (var i = 0; i < arrayData.length-1; i++) {
+				var d = new Date();
+				d.setTime(arrayData[i+1][0]);
+				data.addRow([d, arrayData[i+1][2], arrayData[i+1][1], 
+					(arrayData[i+1][3] - arrayData[i+1][2]), arrayData[i+1][3] ]);
+			}
+			
+			var lastDate = new Date();
+			lastDate.setTime(arrayData[arrayData.length-1][0]);
+			
+            var options = {
+               title: arrayData[0][1],
+               legend: 'none',
+			   seriesType: "area",
+			   isStacked: true,
+	           series: {0: {color: 'transparent'}, 
+			   			1: {type: "line", color: '#cc3300', lineWidth: 1}, 
+						2: {color: '#ff9933', lineWidth: 0}, 
+						3: {type: "line", color: 'transparent'} },
+               vAxis: {viewWindow :{min: data.getColumnRange(1).min, max: data.getColumnRange(4).max}, 
+			   		   title: verticalUnit,
+					   gridlines: { color: 'cce5ff' } },
+					   
+			   hAxis: {gridlines: { color: 'cce5ff' },
+			   			title: "Last value: "+ arrayData[arrayData.length-1][1] +" "+ 
+									verticalUnit +" the "+ lastDate.toLocaleDateString() +" at "+
+									lastDate.toLocaleTimeString() },	   
+					   
+			   chartArea: {width: 620, height: 400}
+            };
+			  
+        	var chart = new google.visualization.ComboChart(document.getElementById(elementId));
+        	chart.draw(data, options);
+       	
+	  	});
+	  }
+	
+    </script>
+  </head>
+  <body>
+    <b>Pilogger : </b> <a href="https://pierremuth.wordpress.com/category/pilogger/">Project page</a>
+     <table id="t00">
+  		<tr>
+          <td><b>Detailed channels:</b>&nbsp;&nbsp;</td>
+           <td><a href="index.php?scale=Realtime&grouped=0">Real time</a> &nbsp;&nbsp;</td>
+           <td><a href="index.php?scale=Hour&grouped=0">Hours</a>&nbsp;&nbsp;</td>
+           <td><a href="index.php?scale=Day&grouped=0">Day</a>&nbsp;&nbsp;</td>
+           <td><a href="index.php?scale=Month&grouped=0">Month</a>&nbsp;&nbsp;</td>
+           <td><a href="index.php?scale=Year&grouped=0">Year</a>&nbsp;&nbsp;</td>
+           <td><a href="index.php?scale=Longrange&grouped=0">Lifetime</a>&nbsp;&nbsp;</td>
+           <td><a href="instantaneous.php">Instant Values</a>&nbsp;&nbsp;</td>
+  		</tr>
+        <tr>
+           <td><b>Grouped channels:</b></td>
+           <td><a href="index.php?scale=Realtime&grouped=1">Real time</a> &nbsp;&nbsp;</td>
+           <td><a href="index.php?scale=Hour&grouped=1">Hours</a>&nbsp;&nbsp;</td>
+           <td><a href="index.php?scale=Day&grouped=1">Day</a>&nbsp;&nbsp;</td>
+           <td><a href="index.php?scale=Month&grouped=1">Month</a>&nbsp;&nbsp;</td>
+           <td><a href="index.php?scale=Year&grouped=1">Year</a>&nbsp;&nbsp;</td>
+           <td><a href="index.php?scale=Longrange&grouped=1">Lifetime</a>&nbsp;&nbsp;</td>
+  		</tr>
+        </table>
+     <h1>Last 24 hours :</h1>
+
+    <div id="chart_1" style="width: 800px; height: 500px;"></div>
+    <div id="chart_2" style="width: 800px; height: 500px;"></div>
+    <div id="chart_3" style="width: 800px; height: 500px;"></div>
+    <div id="chart_4" style="width: 800px; height: 500px;"></div>
+    <div id="chart_5" style="width: 800px; height: 500px;"></div>
+    <div id="chart_6" style="width: 800px; height: 500px;"></div>
+    <div id="chart_7" style="width: 800px; height: 500px;"></div>
+    <div id="chart_8" style="width: 800px; height: 500px;"></div>
+    <div id="chart_9" style="width: 800px; height: 500px;"></div>
+    <div id="chart_10" style="width: 800px; height: 500px;"></div>
+    <div id="chart_11" style="width: 800px; height: 500px;"></div>
+    <div id="chart_12" style="width: 800px; height: 500px;"></div>
+    <div id="chart_13" style="width: 800px; height: 500px;"></div>
+    <div id="chart_14" style="width: 800px; height: 500px;"></div>
+    <div id="chart_15" style="width: 800px; height: 500px;"></div>
+    <div id="chart_16" style="width: 800px; height: 500px;"></div>
+    <div id="chart_17" style="width: 800px; height: 500px;"></div>
+    <div id="chart_18" style="width: 800px; height: 500px;"></div>
+    <div id="chart_19" style="width: 800px; height: 500px;"></div>
+    <div id="chart_20" style="width: 800px; height: 500px;"></div>
+    
+  </body>
+</html>

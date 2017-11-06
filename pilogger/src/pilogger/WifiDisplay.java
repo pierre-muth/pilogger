@@ -141,7 +141,7 @@ public class WifiDisplay extends AbstractProbe implements Runnable {
 		int[] pixDithered = getDitheredMonochromeOrdered();
 		
 		// save to file
-		File outputfile = new File(ProbeManager.onlineFileLocalDirectory+CAPTURE_FILENAME);
+		File outputfile = new File(ProbeManagerSwing.onlineFileLocalDirectory+CAPTURE_FILENAME);
 		try {
 			BufferedImage destImage = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_BYTE_GRAY);
 			WritableRaster wr = destImage.getData().createCompatibleWritableRaster();

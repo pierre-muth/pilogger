@@ -1,3 +1,7 @@
+/**
+ * launch: sudo java -classpath .:/home/pi/pilogger/pilogger/lib/'*' pilogger.PiloggerLauncher
+ */
+
 package pilogger;
 
 import javax.swing.JFrame;

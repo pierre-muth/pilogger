@@ -34,7 +34,8 @@ import cern.jdve.data.ShiftingDataSet;
  * @author pfreyerm
  */
 public class DataChannel {
-	public static final String logFileDirectory = "/home/pi/projects/pilogger/logs/";
+	public static final String logFileDirectory = "/home/pi/pilogger/logs/";
+	public static final String onlineFileLocalDirectory = "/home/pi/pilogger/logs/online/";
 	public static final String logFileDirectorySimulation = "c:\\pilogger\\logs\\online\\";
 
 	private Path logFilePath;
@@ -515,7 +516,7 @@ public class DataChannel {
 	}
 	
 	private void writeOnlineDataSet(DataSet dataset, DataSet minDataset, DataSet maxDataset, String timeScale) {
-		Path onlineFilePath = Paths.get(ProbeManager.onlineFileLocalDirectory).resolve(logFileName+timeScale+".csv");
+		Path onlineFilePath = Paths.get(onlineFileLocalDirectory).resolve(logFileName+timeScale+".csv");
 
 		try {
 			BufferedWriter onlineFileWriter = Files.newBufferedWriter(onlineFilePath, Charset.defaultCharset(), new OpenOption[] {
@@ -650,7 +651,7 @@ public class DataChannel {
 		}
 		
 		private void loadDataSetLogFile(DataSet dataset, DataSet minDataset, DataSet maxDataset, String timeScale) {
-			Path datasetFilePath = Paths.get(ProbeManager.onlineFileLocalDirectory).resolve(logFileName+timeScale+".csv");
+			Path datasetFilePath = Paths.get(ProbeManagerSwing.onlineFileLocalDirectory).resolve(logFileName+timeScale+".csv");
 			
 			try {
 				BufferedReader logFileReader = Files.newBufferedReader(datasetFilePath, Charset.defaultCharset());
