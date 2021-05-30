@@ -1,5 +1,5 @@
 wifi.setmode(wifi.STATION)
-wifi.sta.config("BoiteVivante", "82F7625EEC6894868EA329F8E1", 0)
+wifi.sta.config("xxx", "xxx", 0)
 wifi.setphymode(wifi.PHYMODE_N)
 wifi.sleeptype(wifi.MODEM_SLEEP)
 
